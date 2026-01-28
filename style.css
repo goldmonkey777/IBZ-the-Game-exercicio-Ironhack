@@ -1,3 +1,146 @@
+/* Page layout */
+/*
+  =============================
+  PAGE LAYOUT
+  =============================
+  Define o layout geral da página, centralizando o conteúdo e aplicando um fundo azul claro.
+  Ideal para garantir que tudo fique centralizado e visualmente agradável.
+*/
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #cfeef7;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+#game {
+/*
+  =============================
+  GAME CONTAINER
+  =============================
+  Define a largura máxima do container principal do jogo, tornando-o responsivo.
+*/
+  width: min(1100px, 95vw);
+}
+
+/* MAP */
+/*
+  =============================
+  MAPA
+  =============================
+  Define o estilo da área do mapa, incluindo o posicionamento, tamanho e imagem de fundo.
+  Aqui é onde o mapa de Ibiza é exibido e onde os marcadores são posicionados.
+*/
+#map {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  margin: 0;
+  background-image: url("./img/ibiza-map.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: #bfe7f2;
+  border: none;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+/* PLAYER (optional) */
+/*
+  =============================
+  PLAYER (Opcional)
+  =============================
+  Estiliza o marcador do jogador (caso usado), posicionando-o no mapa como um círculo vermelho.
+*/
+#player {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e53935;
+  border: 2px solid white;
+
+  /* initial position */
+  left: 48%;
+  top: 52%;
+  transform: translate(-50%, -50%);
+}
+
+/* ZONES / POINTS */
+/*
+  =============================
+  ZONAS / PONTOS
+  =============================
+  Define o estilo dos pontos de interesse (zonas) no mapa, como Sant Antoni, Ibiza Town, etc.
+  Cada zona é posicionada de forma absoluta para coincidir com a localização no mapa.
+*/
+.zone {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  padding: 10px 14px;
+
+  background: rgba(255, 255, 255, 0.85);
+  border: 2px solid rgba(0,0,0,0.35);
+  border-radius: 14px;
+
+  font-weight: 700;
+  color: #111;
+  user-select: none;
+
+  /* turn this ON while positioning zones */
+  /* outline: 2px dashed rgba(255,0,0,0.35); */
+}
+
+.zone span {
+  font-size: 16px;
+}
+
+/* Suggested positions (tweak if needed) */
+/* Using percentages makes it responsive to different screen sizes */
+
+.sant-antoni {
+  left: 16%;
+  top: 62%;
+}
+
+.ibiza-town {
+  left: 70%;
+  top: 60%;
+}
+
+.disco-area {
+  left: 58%;
+  top: 28%;
+}
+
+.hippie-area {
+  left: 30%;
+  top: 22%;
+}
+#island-shape {
+/*
+  =============================
+  ISLAND SHAPE (DECORATIVO)
+  =============================
+  Exemplo de como criar uma forma de ilha estilizada usando gradiente e bordas arredondadas.
+  Não é essencial para o funcionamento do mapa, apenas decorativo.
+*/
+  position: absolute;
+  left: 60px;
+  top: 30px;
+  width: 680px;
+  height: 520px;
+  background: radial-gradient(ellipse 70% 60% at 60% 40%, #ffe082 80%, #e0f7fa 100%);
+  border-radius: 60% 40% 60% 50%/50% 60% 40% 60%;
+  box-shadow: 0 0 40px #0002;
+  z-index: 1;
+}
 body {
   font-family: Arial, sans-serif;
   background: #e0f7fa;
@@ -5,6 +148,12 @@ body {
   padding: 0;
 }
 .screen {
+/*
+  =============================
+  TELA DE JOGO (GAME SCREEN)
+  =============================
+  Estiliza telas de navegação do jogo, como tela inicial ou de vitória/derrota.
+*/
   display: none;
   justify-content: center;
   align-items: center;
@@ -15,9 +164,99 @@ body {
   display: flex;
 }
 #game-screen {
+/*
+  =============================
+  GAME SCREEN CONTAINER
+  =============================
+  Define o container principal da tela do jogo, com borda e fundo diferenciados.
+*/
   width: 800px;
   height: 600px;
   background: #fffbe7;
   border: 2px solid #333;
   position: relative;
+}
+
+#map-container {
+/*
+  =============================
+  MAP CONTAINER
+  =============================
+  Container para o mapa, com bordas arredondadas e sombra para destaque visual.
+*/
+  width: 800px;
+  height: 600px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #e0f7fa 60%, #ffe082 100%);
+  border-radius: 30px;
+  box-shadow: 0 0 24px #0002;
+}
+
+.zone {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: #222;
+  border-radius: 18px;
+  opacity: 0.92;
+  border: 2px solid #3333;
+  font-size: 1.1em;
+  pointer-events: none;
+  background: #fffbe7cc;
+  box-shadow: 0 2px 8px #0001;
+}
+#zone-ibiza-town {
+/*
+  =============================
+  ZONAS ESPECÍFICAS
+  =============================
+  Define a posição e estilo de cada zona específica do mapa.
+*/
+  left: 470px;
+  top: 340px;
+  width: 120px;
+  height: 80px;
+  border: 2px solid #3f51b5;
+}
+#zone-sant-antoni {
+  left: 60px;
+  top: 370px;
+  width: 120px;
+  height: 80px;
+  border: 2px solid #ff9800;
+}
+#zone-hippie {
+  left: 180px;
+  top: 70px;
+  width: 180px;
+  height: 80px;
+  border: 2px solid #43a047;
+}
+#zone-disco {
+  left: 40px;
+  top: 120px;
+  width: 120px;
+  height: 70px;
+  border: 2px solid #d500f9;
+}
+#player {
+/*
+  =============================
+  PLAYER (NOVO ESTILO)
+  =============================
+  Estilo alternativo para o marcador do jogador, centralizado no mapa.
+*/
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  background: red;
+  border-radius: 50%;
+  left: 384px; /* Centered horizontally */
+  top: 284px;  /* Centered vertically */
+  z-index: 2;
+  border: 2px solid #fff;
+  box-shadow: 0 0 8px #0003;
 }
