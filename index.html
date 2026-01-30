@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>IBZ the Game: Survival Season</title>
+    <title>IBZ the Game – Survival Season</title>
     <link rel="icon" type="image/png" href="assets/images/sprites/money.png">
     <link rel="stylesheet" href="style.css" />
   </head>
@@ -13,7 +13,7 @@
       <div class="age-content">
         <h1>🔞 18+</h1>
         <p>
-          <strong>IBZ the GAME</strong> contains adult themes, social satire,
+          <strong>IBZ the Game</strong> contains adult themes, social satire,
           and references to nightlife culture.
         </p>
         <p class="age-disclaimer">
@@ -30,16 +30,76 @@
       <!-- Background Music (No Loop) -->
       <audio id="bgMusic" src="Benediction.mp3"></audio>
 
-      <!-- START SCREEN -->
+      <!-- START SCREEN - fullscreen, mapa = fundo da página -->
       <section id="start-screen" class="screen active">
         <div class="menu-content">
-          <h1>IBZ the GAME</h1>
+          <h1>IBZ the Gam<span class="e-with-tm">e<span class="tm-badge">TM</span></span></h1>
           <p>Explore the magical island!</p>
           <div class="menu-buttons menu-buttons--vertical">
             <button id="start-survival-btn" class="btn-primary">Start Season (Survival)</button>
+            <button id="how-to-play-btn" class="btn-secondary">How to Play</button>
             <button id="info-btn" class="btn-secondary">About Island & Game</button>
           </div>
           <p class="menu-credits">© Goldmonkey · Goldmonkey Studio · All rights reserved.</p>
+        </div>
+      </section>
+
+      <!-- HOW TO PLAY / GAME FEATURES -->
+      <section id="how-to-play" class="screen">
+        <div class="how-to-play-bg" aria-hidden="true"></div>
+        <div class="how-to-play-overlay" aria-hidden="true"></div>
+        <div class="how-to-play-content">
+          <h2 class="how-to-play-title">How to Play</h2>
+
+          <div class="how-to-play-grid">
+            <!-- A) Movement -->
+            <article class="feature-card">
+              <div class="feature-card__image feature-card__image--movement">
+                <span class="feature-arrow feature-arrow--up" aria-hidden="true">↑</span>
+                <span class="feature-arrow feature-arrow--down" aria-hidden="true">↓</span>
+                <span class="feature-arrow feature-arrow--left" aria-hidden="true">←</span>
+                <span class="feature-arrow feature-arrow--right" aria-hidden="true">→</span>
+                <span class="feature-card__player-dot" aria-hidden="true"></span>
+              </div>
+              <div class="feature-card__text">
+                <p>Move your character using the arrow keys (up, down, left, right).</p>
+              </div>
+            </article>
+
+            <!-- B) Health -->
+            <article class="feature-card">
+              <div class="feature-card__image feature-card__image--health">
+                <div class="feature-hud-hearts" aria-hidden="true">
+                  <span class="heart">♥</span><span class="heart">♥</span><span class="heart">♥</span>
+                </div>
+              </div>
+              <div class="feature-card__text">
+                <p>Health system with visual heart indicators. Avoid obstacles to stay alive.</p>
+              </div>
+            </article>
+
+            <!-- C) Interaction -->
+            <article class="feature-card">
+              <div class="feature-card__image feature-card__image--interaction">
+                <span class="feature-bubble-hint" aria-hidden="true">💬</span>
+              </div>
+              <div class="feature-card__text">
+                <p>Interact with the world and react to events as they appear on screen.</p>
+              </div>
+            </article>
+
+            <!-- D) Obstacles -->
+            <article class="feature-card">
+              <div class="feature-card__image feature-card__image--obstacles">
+                <span class="feature-danger-hint" aria-hidden="true">!</span>
+              </div>
+              <div class="feature-card__text">
+                <p>Procedurally generated obstacles. Each run is different.</p>
+              </div>
+            </article>
+          </div>
+
+          <button id="start-playing-from-howto" class="btn-primary how-to-play-cta">Start Playing</button>
         </div>
       </section>
 
@@ -49,13 +109,13 @@
           <h2 class="info-title">Welcome to Ibiza! 🏝️</h2>
           <p class="info-tagline">The White Isle — rhythm, desire, each zone a state of mind.</p>
           <div class="info-text">
-            <p class="info-intro"><strong>Survival Season:</strong> Endless runner across 4 zones: <strong>Cala Saladeta</strong>, <strong>North / Hippie</strong>, <strong>Universo</strong>, <strong>Ibiza Town</strong>.</p>
+            <p class="info-intro"><strong>Survival Season:</strong> Endless runner. Sequence: <strong>Cala Saladeta</strong> (Beach) → <strong>Norte</strong> → <strong>Clube</strong> → <strong>Ibiza</strong>.</p>
             <ul class="info-zones">
               <li><span class="zone-icon">🏃</span> <strong>Run</strong> — jump on the beat. Lyrics sync and your character “sings”.</li>
-              <li><span class="zone-icon">🏖️</span> <strong>Cala Saladeta:</strong> Chica asks for a mojito; you deliver, gain € and life. Seagulls in the sky.</li>
-              <li><span class="zone-icon">🌿</span> <strong>North:</strong> Hippie gives flower (life, protection, or music effect).</li>
-              <li><span class="zone-icon">🎧</span> <strong>Universo:</strong> Gold Digger — unpredictable (takes money or gives bonus). Lights pulse with music.</li>
-              <li><span class="zone-icon">🚓</span> <strong>Ibiza Town:</strong> Police only here. Entry 60€. Avoid them.</li>
+              <li><span class="zone-icon">🏖️</span> <strong>Cala Saladeta (Beach):</strong> Collect fruits and cocktails. Chica asks for a mojito; you deliver, gain fruits and life. Seagulls in the sky.</li>
+              <li><span class="zone-icon">🌿</span> <strong>Norte:</strong> Hippie gives a flower (life, protection or music effect).</li>
+              <li><span class="zone-icon">🎧</span> <strong>Clube:</strong> Gold Digger and Dealer — unpredictable. Lights on the beat.</li>
+              <li><span class="zone-icon">🚓</span> <strong>Ibiza:</strong> Police, Entry 60. Avoid or escape.</li>
             </ul>
             <p class="info-credits">© Goldmonkey · Goldmonkey Studio · All rights reserved.</p>
           </div>
@@ -115,35 +175,32 @@
         </div>
       </section>
 
-      <!-- FLAPPY SCREEN -->
+      <!-- FLAPPY SCREEN - fullscreen, jogo = fundo -->
       <section id="flappy-screen" class="screen">
         <div id="flappy-game-container">
           <canvas id="flappy-canvas" width="320" height="480"></canvas>
-          <div class="music-controls">
-            <button type="button" id="mute-music-btn" class="btn-mute-music" title="Mute / Unmute music">🔇 Music</button>
-            <label class="volume-label" title="Volume">
-              <span class="volume-icon">🔊</span>
-              <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="50" title="Volume" />
-            </label>
-          </div>
-          <!-- HUD Score (Live) -->
           <div id="flappy-score-hud">PTS: 0</div>
-
-          <!-- Overlay (Start / Game Over) -->
           <div id="flappy-overlay">
-             <div class="overlay-content">
-                <h2 id="flappy-msg">Tap to Start Season</h2>
-                <div id="flappy-stats">
-                    <h3 id="flappy-reason"></h3>
-                    <p id="flappy-zone-result">Zone: Sant Antoni</p>
-                    <div id="flappy-final-score">Points: 0</div>
-                </div>
-                <div class="game-buttons">
-                    <button id="flappy-restart-btn" class="btn-primary btn-hidden">Try Again</button>
-                    <button id="flappy-menu-btn" class="btn-secondary">Main Menu</button>
-                </div>
-             </div>
+            <div class="overlay-content">
+              <h2 id="flappy-msg">Tap to Start Season</h2>
+              <div id="flappy-stats">
+                <h3 id="flappy-reason"></h3>
+                <p id="flappy-zone-result">Zone: Sant Antoni</p>
+                <div id="flappy-final-score">Points: 0</div>
+              </div>
+              <div class="game-buttons">
+                <button id="flappy-restart-btn" class="btn-primary btn-hidden">Try Again</button>
+                <button id="flappy-menu-btn" class="btn-secondary">Main Menu</button>
+              </div>
+            </div>
           </div>
+        </div>
+        <div class="music-controls music-controls--outside">
+          <button type="button" id="mute-music-btn" class="btn-mute-music" title="Mute / Unmute music">🔇 Music</button>
+          <label class="volume-label" title="Volume">
+            <span class="volume-icon">🔊</span>
+            <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="50" title="Volume" />
+          </label>
         </div>
       </section>
     </main>

@@ -1,3 +1,14 @@
+// Música = único relógio. Letra entra LIGEIRAMENTE ANTES do vocal (segundos).
+const LYRICS_LEAD = 0.28;
+// Tempo que a letra permanece visível após o vocal (evita texto em silêncio)
+const LYRICS_WINDOW_SEC = 3.2;
+
+// Global lyrics controller — single source of truth; NEVER reset on zone change
+const LyricsController = {
+  index: 0,
+  activeText: "",
+  started: false
+};
 
 const FlappyGame = {
   canvas: null,
@@ -37,74 +48,45 @@ const FlappyGame = {
   entities: [], // Obstacles and Items
   frame: 0,
 
-  // Zones: Cala Saladeta (beach), North/Hippie, Universo (club), Ibiza Town
-  zones: ['Cala Saladeta', 'North / Hippie', 'Universo', 'Ibiza Town'],
+  // Official zones (exact names): Cala Saladeta → Norte Hippie → Universo → Ibiza → Dalt Vila
+  zones: ['Cala Saladeta', 'Norte Hippie', 'Universo', 'Ibiza', 'Dalt Vila'],
   currentZoneIndex: 0,
 
-  // Lyrics - Complete structure with ~2s intervals
+  // Zones by music time (seconds): phase split by song time; first change at 40s so phases are visible
+  zoneTimeThresholds: [0, 40, 80, 160, 320], // Cala Saladeta (0–40s) | Norte (40–80) | Universo (80–160) | Ibiza (160–320) | Dalt Vila (320+)
+
+  // Interaction dialogues: always on collision; 6 seconds of dialogue in all areas (beach, club, city, hippie)
+  NPC_DIALOGUE_DURATION_FRAMES: 6 * 60, // 6 seconds at ~60 fps
+  npcDialogues: {
+    chica: {
+      request: "Hey Miranda give me a Mojito",
+      reply: "Sure! Here you go."
+    },
+    hippie: {
+      request: "Hey Miranda, take this flower."
+    },
+    police: {
+      request: "Hey, do you have drugs?"
+    }
+  },
+
+  // Benediction – Hot Natured | Music = único relógio; time = ataque do vocal (s); texto em (time - LYRICS_LEAD).
+  LYRICS_LEAD,
   lyricsLines: [
-      // Intro (0:40)
-      { time: 40, text: "Yeah!" },
-
-      // Verse 1 - anchors: 60s, 64s
-      { time: 48, text: "Feel it coming on" },
-      { time: 52, text: "I waited for so long" },
-      { time: 56, text: "..." },
-      { time: 60, text: "Feel it come my way" },
-      { time: 64, text: "Each and every day" },
-
-      // Pre-chorus 1 - anchor: 68s
-      { time: 68, text: "By the time I put on my shoes" },
-      { time: 72, text: "Already have the groove" },
-      { time: 76, text: "Benediction in the morning time" },
-      { time: 80, text: "Everybody riding on and on" },
-
-      // Chorus 1 - anchor: 84s
-      { time: 84, text: "Keep on riding on and on" },
-      { time: 88, text: "Keep on riding on and on" },
-      { time: 92, text: "Keep on riding on and on" },
-      { time: 96, text: "Keep on riding on" },
-
-      // Verse 2 (1:32)
-      { time: 92, text: "Feel it coming on" },
-      { time: 96, text: "I waited for so long" },
-      { time: 100, text: "Feel it come my way, yeah" },
-      { time: 104, text: "Each and every day" },
-
-      // Pre-chorus 2 (1:48)
-      { time: 108, text: "There's nothing that I can do" },
-      { time: 112, text: "Feel it true" },
-      { time: 116, text: "Benediction in the morning time" },
-      { time: 120, text: "Everybody riding on and on" },
-
-      // Chorus 2 (2:04)
-      { time: 124, text: "Keep on riding on and on" },
-      { time: 128, text: "Keep on riding on and on" },
-      { time: 132, text: "Keep on riding on and on" },
-      { time: 136, text: "Keep on riding on and on" },
-
-      // Bridge 1 - anchor: 164s (2:44)
-      { time: 164, text: "I feel like our love has found a home" },
-      { time: 172, text: "In this place I know that I belong" },
-
-      // Hook 1 - anchor: 190s (3:10)
-      { time: 190, text: "Benediction in my mind" },
-      { time: 194, text: "Benediction in my heart and soul" },
-      { time: 198, text: "Benediction in my mind" },
-      { time: 202, text: "Benediction in my heart and soul" },
-
-      // Bridge 2 (~3:26 = 206s)
-      { time: 206, text: "I feel like our love has found a home" },
-      { time: 214, text: "In this place I know that I belong" },
-
-      // Hook 2 (~3:42 = 222s)
-      { time: 222, text: "Benediction in my mind" },
-      { time: 226, text: "Benediction in my heart and soul" },
-      { time: 230, text: "Benediction in my mind" },
-      { time: 234, text: "Benediction in my heart and soul" },
-
-      // Outro (~4:00+)
-      { time: 250, text: "..." }
+    { time: 12.20, text: "Hey!" },
+    { time: 13.90, text: "Hey!" },
+    { time: 19.00, text: "When I give you my love…" },
+    { time: 22.45, text: "I want you to want me…" },
+    { time: 27.10, text: "You know I got it…" },
+    { time: 30.45, text: "I want you to want me…" },
+    { time: 35.55, text: "Benediction…" },
+    { time: 38.95, text: "Benediction…" },
+    { time: 45.25, text: "When I give you my love…" },
+    { time: 48.65, text: "I want you to want me…" },
+    { time: 53.45, text: "You know I got it…" },
+    { time: 56.75, text: "I want you to want me…" },
+    { time: 61.95, text: "Benediction…" },
+    { time: 65.35, text: "Benediction…" }
   ],
 
   // Obstacle Timeline (seconds) - Calibrated from verified timestamps
@@ -114,10 +96,23 @@ const FlappyGame = {
   obstacleTimeline: [],
   currentObstacleIndex: 0,
 
-  // BPM Configuration - REAL 121 BPM (house standard)
-  bpm: 121,
-  barDuration: 1.983, // seconds per bar (4 beats at 121 BPM = 60/121*4)
+  // BPM real Benediction ≈123 (swing house, vocais off-beat)
+  bpm: 123,
+  barDuration: 1.951, // 4 beats @ 123 BPM = 60/123*4
   firstBarOffset: 0,
+
+  // Fine sync adjustment (seconds): positive = lyric later, negative = earlier
+  lyricsOffsetSeconds: 0, // loaded from localStorage at start; + = lyrics later, - = earlier
+  // AudioContext = relógio preciso; base e latência para sync tipo LyricsSync
+  lyricsSyncBase: null,
+  lyricsLatencyComp: 0,
+
+  // Debug overlay (toggle with D) — invisible to players, for calibration
+  debugOverlay: false,
+
+  // Vocal spectrum: only show lyrics bubble when vocal energy above threshold (avoids stale text)
+  useVocalFilter: false, // true = só mostra letra quando há vocal; false = mostra pelo tempo da música
+  vocalThreshold: 15, // tune in debug overlay; bins 1–5 ≈ 300Hz–3kHz
 
   // =============================================
   // 🎵 SONG SECTIONS - The heart of the game
@@ -185,6 +180,64 @@ const FlappyGame = {
     return this.sections[0];
   },
 
+  // Tempo de playback: AudioContext quando disponível (relógio preciso), senão media.currentTime.
+  getLyricsTime(audio) {
+    if (!audio || audio.paused) return audio ? audio.currentTime : 0;
+    if (this.audioCtx && this.lyricsSyncBase != null) {
+      const ctxTime = this.audioCtx.currentTime - this.lyricsSyncBase;
+      return ctxTime + (this.lyricsLatencyComp || 0);
+    }
+    return audio.currentTime;
+  },
+
+  // Sincronização: relógio = música (AudioContext ou currentTime). Todo frame; while = catch-up.
+  updateLyrics(audio) {
+    if (!audio || audio.paused) return;
+
+    const t = this.getLyricsTime(audio) + (this.lyricsOffsetSeconds || 0);
+
+    if (!LyricsController.started) LyricsController.started = true;
+
+    // Catch-up: avançar todas as letras que já deveriam estar visíveis (evita atraso acumulado)
+    while (
+      this.lyricsLines[LyricsController.index] &&
+      t >= this.lyricsLines[LyricsController.index].time - LYRICS_LEAD
+    ) {
+      LyricsController.activeText = this.lyricsLines[LyricsController.index].text;
+      LyricsController.index++;
+    }
+
+    // Nunca mostrar texto durante silêncio musical: limpar após a janela da letra
+    const idx = LyricsController.index;
+    if (idx > 0) {
+      const lastShown = this.lyricsLines[idx - 1];
+      if (t > lastShown.time + LYRICS_WINDOW_SEC) LyricsController.activeText = "";
+    }
+  },
+
+  // Retorna a letra ativa no tempo t (só audio; usado ex.: spawn Chica)
+  getActiveLyric(t) {
+    const adj = t + (this.lyricsOffsetSeconds || 0);
+    const current = this.lyricsLines.find(l => adj >= l.time - LYRICS_LEAD && adj < l.time + LYRICS_WINDOW_SEC);
+    if (current) return current;
+    const lastStarted = this.lyricsLines.filter(l => l.time - LYRICS_LEAD <= adj).pop();
+    return lastStarted && adj < lastStarted.time + LYRICS_WINDOW_SEC ? lastStarted : null;
+  },
+
+  // Vocal energy (bins 1–5 ≈ 300Hz–3kHz) for auto-sync: only show bubble when vocal present
+  getVocalEnergy() {
+    if (!this.analyser || !this.spectrumData) return 0;
+    this.analyser.getByteFrequencyData(this.spectrumData);
+    const len = this.spectrumData.length;
+    let sum = 0;
+    let count = 0;
+    for (let i = 1; i <= 5 && i < len; i++) {
+      sum += this.spectrumData[i];
+      count++;
+    }
+    return count ? sum / count : 0;
+  },
+
   // Generate timeline with PROGRESSIVE DIFFICULTY
   // SUPER EASY: 0-4 min (obstacles every 10s - let the player SING!)
   // Medium: 4-5 min (every 4s)
@@ -193,8 +246,9 @@ const FlappyGame = {
       this.obstacleTimeline = [];
       const musicDuration = 399; // 6:39
 
-      // Phase 1: SUPER EASY (0-240s = 4 minutes) - Every 10 seconds
-      // Just enough to keep it interesting, focus on singing!
+      // First spawns early (3s, 5s, 8s) so the beach doesn’t feel static
+      this.obstacleTimeline.push(3, 5, 8);
+      // Phase 1: SUPER EASY (10-240s) - Every 10 seconds
       for (let t = 10; t < 240; t += 10) {
           this.obstacleTimeline.push(t);
       }
@@ -209,7 +263,8 @@ const FlappyGame = {
           this.obstacleTimeline.push(t);
       }
 
-      console.log(`Timeline: ${this.obstacleTimeline.length} obstacles (SuperEasy→Medium→Hard)`);
+      this.obstacleTimeline.sort((a, b) => a - b);
+      console.log(`Timeline: ${this.obstacleTimeline.length} obstacles (early 3/5/8s → Easy→Medium→Hard)`);
   },
 
   // Assets
@@ -310,12 +365,14 @@ const FlappyGame = {
     document.addEventListener('keyup', this.handleStopInput);
     this.canvas.addEventListener('mousedown', () => {
         if(this.audioCtx && this.audioCtx.state === 'suspended') this.audioCtx.resume();
-        this.jump();
+        if (this.state === 'START' || this.state === 'GAMEOVER') this.action();
+        else this.jump();
     });
     this.canvas.addEventListener('touchstart', (e) => {
         if(this.audioCtx && this.audioCtx.state === 'suspended') this.audioCtx.resume();
         e.preventDefault();
-        this.jump();
+        if (this.state === 'START' || this.state === 'GAMEOVER') this.action();
+        else this.jump();
     });
 
     this.reset();
@@ -323,7 +380,47 @@ const FlappyGame = {
   },
 
   handleInput(e) {
+      // Debug overlay: toggle with D (works in any state)
+      if (e.code === 'KeyD' && !e.repeat) {
+          this.debugOverlay = !this.debugOverlay;
+          e.preventDefault();
+      }
+      // Vocal filter: toggle with V (only when debug on)
+      if (e.code === 'KeyV' && !e.repeat && this.debugOverlay) {
+          this.useVocalFilter = !this.useVocalFilter;
+          e.preventDefault();
+      }
+      // Line nudge and threshold: when debug on
+      if (this.debugOverlay && !e.repeat) {
+          const i = LyricsController.index;
+          if (e.code === 'Comma' && i < this.lyricsLines.length) {
+              this.lyricsLines[i].time = Math.max(0, this.lyricsLines[i].time - 0.05);
+              e.preventDefault();
+          }
+          if (e.code === 'Period' && i < this.lyricsLines.length) {
+              this.lyricsLines[i].time = Math.min(399, this.lyricsLines[i].time + 0.05);
+              e.preventDefault();
+          }
+          if (e.code === 'Minus') {
+              this.vocalThreshold = Math.max(0, this.vocalThreshold - 2);
+              e.preventDefault();
+          }
+          if (e.code === 'Equal' || e.code === 'NumpadEqual') {
+              this.vocalThreshold = Math.min(255, this.vocalThreshold + 2);
+              e.preventDefault();
+          }
+      }
+
       if (this.state !== 'PLAYING') {
+          // 🎛️ Lyrics calibration (works even outside PLAYING)
+          if (e.code === 'BracketLeft') {
+              this.lyricsOffsetSeconds = (this.lyricsOffsetSeconds || 0) - 0.05;
+              localStorage.setItem('ibz-lyrics-offset-seconds', String(this.lyricsOffsetSeconds));
+          }
+          if (e.code === 'BracketRight') {
+              this.lyricsOffsetSeconds = (this.lyricsOffsetSeconds || 0) + 0.05;
+              localStorage.setItem('ibz-lyrics-offset-seconds', String(this.lyricsOffsetSeconds));
+          }
           if (e.code === 'Space' || e.code === 'Enter') this.action();
           return;
       }
@@ -333,6 +430,15 @@ const FlappyGame = {
       }
       if (e.code === 'ArrowDown') {
           this.duck(true);
+      }
+      // 🎛️ Lyrics calibration (real-time)
+      if (e.code === 'BracketLeft') {
+          this.lyricsOffsetSeconds = (this.lyricsOffsetSeconds || 0) - 0.05;
+          localStorage.setItem('ibz-lyrics-offset-seconds', String(this.lyricsOffsetSeconds));
+      }
+      if (e.code === 'BracketRight') {
+          this.lyricsOffsetSeconds = (this.lyricsOffsetSeconds || 0) + 0.05;
+          localStorage.setItem('ibz-lyrics-offset-seconds', String(this.lyricsOffsetSeconds));
       }
   },
 
@@ -354,9 +460,16 @@ const FlappyGame = {
     this.state = 'PLAYING';
     this.generateObstacleTimeline(); // Build timeline
 
+    // Load persisted lyrics calibration (if any)
+    const savedLyricsOffset = localStorage.getItem('ibz-lyrics-offset-seconds');
+    if (savedLyricsOffset !== null && !isNaN(parseFloat(savedLyricsOffset))) {
+        this.lyricsOffsetSeconds = parseFloat(savedLyricsOffset);
+    }
+
     // Play Music & Setup Spectrum Analyser (unless user muted)
     const music = document.getElementById('bgMusic');
     if (music) {
+        music.currentTime = 0; // Always from the start: lyrics and obstacles synced with the music
         const savedVol = localStorage.getItem('ibz-music-volume');
         if (savedVol !== null) music.volume = parseFloat(savedVol);
         else if (typeof music.volume !== 'number' || isNaN(music.volume)) music.volume = 0.5;
@@ -376,6 +489,12 @@ const FlappyGame = {
             } catch (e) {
                 console.log("Analyser setup failed:", e);
             }
+        }
+
+        // Relógio preciso (LyricsSync-style): base = ctx - media no PLAY
+        if (this.audioCtx) {
+            this.lyricsSyncBase = this.audioCtx.currentTime - music.currentTime;
+            this.lyricsLatencyComp = this.audioCtx.outputLatency || 0;
         }
     }
 
@@ -409,12 +528,34 @@ const FlappyGame = {
     // Zen Mode State (Zone 1 Feature)
     this.zenMode = false;
     this.zenTimer = 0;
+    this.musicAlterTimer = 0;
+    this.policeSpawnBlockedUntil = 0;
 
-    // Event State (Chica - Zone 0)
-    // Steps: 0=None, 1=Approach, 2=Talk, 3=Action, 4=Reward/Leave
-    this.eventStep = 0;
-    this.eventTimer = 0;
-    this.eventTarget = null; // Reference to event NPC
+    // 🎧 CLUB: Drug state (risk/reward)
+    this.drugEffect = false;
+    this.drugEffectUntil = 0;
+    this.baseSpeed = 3;
+    this.baseJumpStrength = -12;
+
+    // 🚓 Prison & Escape
+    this.prisonFlashFrames = 0;
+    this.escapeSurviveUntil = 0;
+
+    // Single NPC Event controller (freezes gameplay, fixed 6s, bubble above NPC)
+    this.npcEvent = {
+      active: false,
+      type: null,   // 'chica' | 'hippie' | 'police'
+      npc: null,
+      text: '',
+      timer: 0,
+      duration: 360, // 6s a ~60fps
+      hadDrug: false // only for police
+    };
+
+    // LyricsController: reset only on new game, NEVER on zone change
+    LyricsController.index = 0;
+    LyricsController.activeText = "";
+    LyricsController.started = false;
 
     if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
     this.animationFrameId = null;
@@ -450,7 +591,7 @@ const FlappyGame = {
   },
 
   loop() {
-    if (this.state !== 'PLAYING' && this.state !== 'EVENT') return;
+    if (this.state !== 'PLAYING' && this.state !== 'EVENT' && this.state !== 'PRISON') return;
     this.update();
     this.draw();
     this.animationFrameId = requestAnimationFrame(() => this.loop());
@@ -459,10 +600,26 @@ const FlappyGame = {
   update() {
     this.frame++;
 
-    // ** STATE MANAGEMENT: EVENT **
+    // Continuous lyrics update — music is the clock; runs every frame; zone-independent
+    this.updateLyrics(document.getElementById('bgMusic'));
+
+    // ** STATE MANAGEMENT: EVENT ** — gameplay fully frozen
     if (this.state === 'EVENT') {
         this.updateEvent();
-        return; // Skip normal physics/update
+        return;
+    }
+
+    // ** STATE MANAGEMENT: PRISON ** (pause + flash, then apply penalty)
+    if (this.state === 'PRISON') {
+        this.prisonFlashFrames--;
+        if (this.prisonFlashFrames <= 0) {
+            this.state = 'PLAYING';
+            this.drugEffect = false;
+            this.drugEffectUntil = 0;
+            this.speed = this.baseSpeed;
+            this.jumpStrength = this.baseJumpStrength;
+        }
+        return;
     }
 
     // Zen Mode Timer
@@ -471,6 +628,18 @@ const FlappyGame = {
         this.zenMode = true;
     } else {
         this.zenMode = false;
+    }
+    if (this.musicAlterTimer > 0) this.musicAlterTimer--;
+
+    // Drug effect duration (club boost) — when it ends, restores speed and jump
+    if (this.drugEffect && this.frame >= this.drugEffectUntil) {
+        this.drugEffect = false;
+        this.drugEffectUntil = 0;
+        this.speed = this.baseSpeed;
+        this.jumpStrength = this.baseJumpStrength;
+    }
+    if (this.policeSpawnBlockedUntil > 0 && this.frame >= this.policeSpawnBlockedUntil) {
+        this.policeSpawnBlockedUntil = 0;
     }
 
     // Manage Invulnerability
@@ -514,16 +683,20 @@ const FlappyGame = {
         const currentTime = music.currentTime;
         this.currentSection = this.getCurrentSection(currentTime);
 
-        // Apply section-based speed (smooth transition)
-        const targetSpeed = this.currentSection.speed;
+        // Apply section-based speed (smooth transition); drug boost on top
+        let targetSpeed = this.currentSection.speed;
+        if (this.drugEffect) targetSpeed += 0.8;
         if (this.speed < targetSpeed) {
-            this.speed += 0.05; // Gradual acceleration
+            this.speed += 0.05;
         } else if (this.speed > targetSpeed) {
-            this.speed -= 0.05; // Gradual deceleration
+            this.speed -= 0.05;
         }
     }
+    if (this.drugEffect && this.jumpStrength > this.baseJumpStrength - 2) {
+        this.jumpStrength = Math.max(this.baseJumpStrength - 2, -16); // Longer jump when on drug
+    }
 
-    // Lives & Speed Boost Milestone (Every €100)
+    // Lives & Speed Boost Milestone (Every 100 fruits/cocktails)
     // Check if current score passed a new 100 threshold
     const currentMilestone = Math.floor(this.score / 100);
     if (currentMilestone > this.lastMilestone) {
@@ -535,32 +708,35 @@ const FlappyGame = {
         this.spawnFX('score', this.player.x, this.player.y - 50); // Reuse visual for now
     }
 
-    // Progressão de Zonas (Baseada na Pontuação)
-    // Transições mais rápidas conforme solicitado
-    if (this.score < 10) this.currentZoneIndex = 0;      // Cala Saladeta
-    else if (this.score < 20) this.currentZoneIndex = 1; // North / Hippie
-    else if (this.score < 30) this.currentZoneIndex = 2; // Universo
-    else this.currentZoneIndex = 3;                     // Ibiza Town
+    // Zone change by MUSIC (song time), not by score — synced transition
+    const musicEl = document.getElementById('bgMusic');
+    const audioTime = musicEl && !musicEl.paused ? musicEl.currentTime : 0;
+    const thresholds = this.zoneTimeThresholds;
+    if (audioTime < thresholds[1]) this.currentZoneIndex = 0;       // 0–40s Cala Saladeta
+    else if (audioTime < thresholds[2]) this.currentZoneIndex = 1;  // 40–80s Norte Hippie
+    else if (audioTime < thresholds[3]) this.currentZoneIndex = 2;  // 80–160s Universo
+    else if (audioTime < thresholds[4]) this.currentZoneIndex = 3;   // 160–320s Ibiza
+    else this.currentZoneIndex = 4;                                 // 320s+ Dalt Vila
 
-    // -- Física do Jogador --
+    // -- Player Physics --
     this.player.dy += this.gravity;
     this.player.y += this.player.dy;
 
-    // Colisão com o chão
+    // Ground collision
     if (this.player.y + this.player.h > this.groundY) {
         this.player.y = this.groundY - this.player.h;
         this.player.dy = 0;
     }
 
-    // -- Spawning (Linha do tempo sincronizada com áudio) --
-    // A música é o MACRO CLOCK.
+    // -- Spawning (timeline synced with audio) --
+    // Music is the MACRO CLOCK.
     if (music && !music.paused) {
         const t = music.currentTime;
         if (
             this.currentObstacleIndex < this.obstacleTimeline.length &&
             t >= this.obstacleTimeline[this.currentObstacleIndex]
         ) {
-            this.spawnEntity();
+            this.spawnEntity(t);
             this.currentObstacleIndex++;
         }
     }
@@ -568,10 +744,14 @@ const FlappyGame = {
     // -- Entidades --
     for (let i = 0; i < this.entities.length; i++) {
         let e = this.entities[i];
-        e.x -= this.speed;
 
-        // Omitindo a lógica de colisão para brevidade, ela permanece inalterada...
-        // ... (lógica de colisão mantida) ...
+        // Seagulls: fly only in the upper part, left→right or right→left (no collision)
+        if (e.name === 'Seagull') {
+            const birdSpeed = 2.5;
+            e.x += (e.direction === 1 ? birdSpeed : -birdSpeed);
+        } else {
+            e.x -= this.speed;
+        }
 
         // Check Collision (Skip DECOR type)
         if (e.type !== 'DECOR' &&
@@ -581,34 +761,43 @@ const FlappyGame = {
             this.player.y + this.player.h > e.y
         ) {
              if (e.type === 'GOOD') {
+                // Collect item: reward only; zone change ONLY by score (update), never here
                 if (e.name === 'Sunbather') {
                     // 💋 Social Boost: +1 Life
                     if (this.lives < 5) this.lives++;
                     this.playSound('score');
                     this.spawnFX('heart', e.x, e.y);
                 } else if (e.name === 'Chica' || e.name === 'ChicaSilhouette') {
-                    // Chica: pause and talk 5 seconds — do not set passed so she stays visible
-                    this.state = 'EVENT';
-                    this.eventStep = 1;
-                    this.eventTimer = 0;
-                    this.eventTarget = e;
-                    e.isEventChica = true; // do not remove until event ends
+                    this.startNPCEvent('chica', e, this.npcDialogues.chica.request);
                     this.playSound('score');
-                } else if (e.name === 'Flower' || e.name === 'Hippie') {
+                } else if (e.name === 'Hippie') {
+                    this.startNPCEvent('hippie', e, this.npcDialogues.hippie.request);
+                    this.playSound('score');
+                } else if (e.name === 'Flower') {
+                    // Loose flower (no Hippie): immediate effect
                     this.score += e.value || 10;
                     this.playSound('score');
                     this.spawnFX('flower', e.x, e.y);
                     const flowerRoll = Math.random();
-                    if (flowerRoll < 0.33) {
-                        if (this.lives < 5) this.lives++;
-                    } else if (flowerRoll < 0.66) {
-                        this.zenTimer = 300;
-                        this.invulnerable = true;
-                        this.invulnerableTimer = 90;
-                    } else {
-                        this.zenTimer = 200;
-                        this.musicAlterTimer = 180;
-                    }
+                    if (flowerRoll < 0.33) { if (this.lives < 5) this.lives++; }
+                    else if (flowerRoll < 0.66) { this.zenTimer = 300; this.invulnerable = true; this.invulnerableTimer = 90; }
+                    else { this.zenTimer = 200; this.musicAlterTimer = 180; this.policeSpawnBlockedUntil = this.frame + 300; }
+                } else if (e.name === 'Dealer') {
+                    // 💊 Club: accept drugs — fruits/cocktails + boost, police will chase
+                    this.money += 80;
+                    this.energy = Math.min(100, (this.energy || 0) + 30);
+                    this.drugEffect = true;
+                    this.drugEffectUntil = this.frame + 600; // 10 sec
+                    this.speed += 0.8;
+                    this.jumpStrength = Math.min(-14, this.jumpStrength - 2);
+                    this.playSound('score');
+                    this.spawnFX('score', e.x, e.y);
+                } else if (e.name === 'Fruit' || e.name === 'Drink') {
+                    // Beach (and other zones): fruits and cocktails
+                    this.money += e.value || 10;
+                    this.score += e.value || 10;
+                    this.playSound('score');
+                    this.spawnFX('score', e.x, e.y);
                 } else {
                     // Standard Item
                     this.score += e.value;
@@ -620,54 +809,66 @@ const FlappyGame = {
             } else if (e.type === 'BAD') {
                 // Custom BAD Logic (Gold Digger / Police / Standard)
                 if (e.name === 'GoldDigger') {
-                    // 🪩 Club Risk: Money Drain
-                    this.money = Math.max(0, this.money - 10);
-                    this.energy = Math.max(0, this.energy - 5);
-                    this.spawnFX('score', e.x, e.y);
+                    // Universo: 50% drugs (money + police risk) / 50% kiss (life only)
+                    if (Math.random() < 0.5) {
+                        this.money += 40;
+                        this.drugEffect = true;
+                        this.drugEffectUntil = this.frame + 600;
+                        this.speed += 0.5;
+                        this.jumpStrength = Math.min(-14, this.jumpStrength - 1);
+                        this.spawnFX('score', e.x, e.y);
+                    } else {
+                        if (this.lives < 5) this.lives++;
+                        this.spawnFX('heart', e.x, e.y);
+                    }
+                    this.playSound('score');
+                } else if (e.name === 'Police' && this.currentZoneIndex === 3) {
+                    if (!this.invulnerable) {
+                        this.startNPCEvent('police', e, this.npcDialogues.police.request, { hadDrug: this.drugEffect });
+                        this.playSound('crash');
+                    }
                 } else if (e.name === 'Police') {
-                    // 🚓 Ibiza Risk: Life Drain
                     if (!this.invulnerable) {
                         this.lives--;
                         this.playSound('crash');
-                        if (this.lives <= 0) {
-                             this.gameOver('Busted by Police!');
-                        } else {
-                             this.invulnerable = true;
-                             this.invulnerableTimer = 60;
-                        }
+                        if (this.lives <= 0) this.gameOver('Busted by Police!');
+                        else { this.invulnerable = true; this.invulnerableTimer = 60; }
                     }
                 } else {
-                     // Standard Obstacle
                      if (!this.invulnerable) {
                         this.lives--;
                         this.playSound('crash');
                         this.spawnFX('collision', this.player.x, this.player.y);
-                        if (this.lives <= 0) {
-                            this.gameOver('Game Over');
-                        } else {
-                            this.invulnerable = true;
-                            this.invulnerableTimer = 60;
-                        }
+                        if (this.lives <= 0) this.gameOver('Game Over');
+                        else { this.invulnerable = true; this.invulnerableTimer = 60; }
                      }
                 }
-                e.passed = true;
+                if (!(e.name === 'Police' && this.state === 'EVENT' && this.npcEvent.type === 'police')) e.passed = true;
             }
         }
 
 
-        if (e.x + e.w < 0 || (e.passed && !e.isEventChica)) {
+        // Remove: off-screen or already passed
+        const offLeft = e.x + e.w < 0;
+        const offRight = e.x > this.canvas.width;
+        if (e.name === 'Seagull') {
+            if (offLeft || offRight) {
+                this.entities.splice(i, 1);
+                i--;
+            }
+        } else if (offLeft || (e.passed && !(this.npcEvent.active && this.npcEvent.npc === e))) {
             this.entities.splice(i, 1);
             i--;
         }
     }
 
-    // Checar Fim da Música (Condição de Vitória)
+    // Check End of Music (Victory condition)
     if (music && music.ended && this.state === 'PLAYING') {
         this.gameOver('You survived the season! 🎉');
         return;
     }
 
-    // -- Atualização de FX --
+    // -- FX update --
     for (let i = 0; i < this.activeFX.length; i++) {
         let fx = this.activeFX[i];
         fx.life--;
@@ -689,70 +890,187 @@ const FlappyGame = {
       });
   },
 
-  // 🐯 EVENT UPDATE LOOP
-  updateEvent() {
-      // Keep rendering (handled by loop calling draw), but control logic here
-      this.eventTimer++;
+  startNPCEvent(type, npc, text, extra = {}) {
+      this.state = 'EVENT';
+      this.npcEvent.active = true;
+      this.npcEvent.type = type;
+      this.npcEvent.npc = npc;
+      this.npcEvent.text = text;
+      this.npcEvent.replyText = (type === 'chica' && this.npcDialogues.chica.reply) ? this.npcDialogues.chica.reply : '';
+      this.npcEvent.timer = 0;
+      this.npcEvent.duration = 360;
+      this.npcEvent.hadDrug = extra.hadDrug || false;
+  },
 
-      if (this.eventStep === 1) {
-          // Step 1: Approach & Freeze (0-60 frames)
-          // Player stops, Sea calms
-          if (this.eventTimer > 30) {
-              this.eventStep = 2;
-              this.eventTimer = 0;
-          }
-      } else if (this.eventStep === 2) {
-           // Step 2: Dialogue — 5 seconds total (300 frames @ 60fps)
-           if (this.eventTimer > 300) {
-               this.eventStep = 3;
-               this.eventTimer = 0;
-               // Auto Give Mojito Logic
-               this.playSound('score'); // 'Clink' sound ideally
-               this.spawnFX('mojito', this.player.x + 20, this.player.y - 40);
-           }
-      } else if (this.eventStep === 3) {
-           // Step 3: Action/Animation (Mojito flying) (0-60 frames)
-           if (this.eventTimer > 60) {
-               // Apply Reward: Money +5, Life +1, Energy +10
-               if (this.lives < 5) this.lives++;
-               this.money += 5;
-               this.energy += 10;
-               // this.score += 50; // Bonus Score (Removed to match exact spec?) Spec says "money + vida +"
-               this.eventStep = 4;
-               this.eventTimer = 0;
-           }
-      } else if (this.eventStep === 4) {
-           // Step 4: Leave (Resume) — remove Chica from entities
-            if (this.eventTimer > 30) {
-                if (this.eventTarget) {
-                    this.eventTarget.isEventChica = false;
-                    this.eventTarget.passed = true;
-                    this.entities = this.entities.filter(ent => ent !== this.eventTarget);
-                }
-                this.state = 'PLAYING';
-                this.eventStep = 0;
-                this.eventTarget = null;
-            }
+  updateEvent() {
+      this.npcEvent.timer++;
+      if (this.npcEvent.timer >= this.npcEvent.duration) {
+          this.endNPCEvent();
       }
+  },
+
+  endNPCEvent() {
+      const ev = this.npcEvent;
+      const npc = ev.npc;
+
+      if (ev.type === 'chica') {
+          if (this.lives < 5) this.lives++;
+          this.money += 35;
+          this.energy = Math.min(100, (this.energy || 0) + 15);
+          this.score += 8;
+          this.playSound('score');
+          this.spawnFX('mojito', this.player.x + 20, this.player.y - 40);
+      } else if (ev.type === 'hippie') {
+          this.score += npc ? (npc.value || 10) : 10;
+          this.playSound('score');
+          this.spawnFX('flower', this.player.x + 20, this.player.y - 40);
+          const flowerRoll = Math.random();
+          if (flowerRoll < 0.33) { if (this.lives < 5) this.lives++; }
+          else if (flowerRoll < 0.66) { this.zenTimer = 300; this.invulnerable = true; this.invulnerableTimer = 90; }
+          else { this.zenTimer = 200; this.musicAlterTimer = 180; this.policeSpawnBlockedUntil = this.frame + 300; }
+      } else if (ev.type === 'police') {
+          if (ev.hadDrug) {
+              const escapeChance = 0.4;
+              if (Math.random() < escapeChance) {
+                  this.drugEffect = false;
+                  this.drugEffectUntil = 0;
+                  this.speed = this.baseSpeed;
+                  this.jumpStrength = this.baseJumpStrength;
+                  this.policeSpawnBlockedUntil = this.frame + 300;
+                  this.playSound('score');
+              } else {
+                  const livesLost = 2 + (Math.random() < 0.5 ? 1 : 0);
+                  this.lives = Math.max(0, this.lives - livesLost);
+                  this.money = Math.floor(this.money * 0.5);
+                  this.drugEffect = false;
+                  this.drugEffectUntil = 0;
+                  this.state = 'PRISON';
+                  this.prisonFlashFrames = 60;
+                  this.playSound('crash');
+                  if (this.lives <= 0) this.gameOver('Busted!');
+              }
+          } else {
+              this.lives = Math.max(0, this.lives - 1);
+              if (this.lives <= 0) this.gameOver('Busted by Police!');
+              else { this.invulnerable = true; this.invulnerableTimer = 60; }
+          }
+      }
+
+      if (npc) {
+          npc.passed = true;
+          this.entities = this.entities.filter(ent => ent !== npc);
+      }
+      this.npcEvent.active = false;
+      this.npcEvent.type = null;
+      this.npcEvent.npc = null;
+      this.npcEvent.text = '';
+      this.npcEvent.replyText = '';
+      this.npcEvent.timer = 0;
+      this.state = 'PLAYING';
+  },
+
+  // Single speech bubble system — same for player and all NPCs. character = { x, y, w, h }.
+  drawSpeechBubble(character, text) {
+    if (!character || !text || !String(text).trim()) return;
+    const MARGIN = 10;
+    const ARROW_HEIGHT = 14;
+    const TIP_ABOVE_HEAD = 6;
+    const MIN_BUBBLE_WIDTH = 100;
+    const MAX_BUBBLE_WIDTH = 280;
+    const PADDING_H = 20;
+    const PADDING_V = 14;
+    const LINE_HEIGHT = 20;
+    const RADIUS = 12;
+    const ARROW_BASE_HALF = 10;
+
+    const headX = character.x + character.w / 2;
+    const headY = character.y;
+
+    this.ctx.font = 'bold 18px Arial';
+    const maxLineWidth = MAX_BUBBLE_WIDTH - PADDING_H * 2;
+    const words = String(text).trim().split(/\s+/);
+    const lines = [];
+    let current = '';
+    for (const word of words) {
+      const test = current ? current + ' ' + word : word;
+      if (this.ctx.measureText(test).width <= maxLineWidth) {
+        current = test;
+      } else {
+        if (current) lines.push(current);
+        current = this.ctx.measureText(word).width <= maxLineWidth ? word : word.slice(0, 12) + '…';
+      }
+    }
+    if (current) lines.push(current);
+
+    const longestW = Math.min(MAX_BUBBLE_WIDTH - PADDING_H * 2, Math.max(...lines.map(l => this.ctx.measureText(l).width), MIN_BUBBLE_WIDTH - PADDING_H * 2));
+    const bubbleWidth = Math.min(MAX_BUBBLE_WIDTH, Math.max(MIN_BUBBLE_WIDTH, longestW + PADDING_H * 2));
+    const bubbleHeight = PADDING_V * 2 + lines.length * LINE_HEIGHT;
+
+    let bubbleX = headX - bubbleWidth / 2;
+    bubbleX = Math.max(MARGIN, Math.min(this.canvas.width - bubbleWidth - MARGIN, bubbleX));
+    let bubbleY = headY - bubbleHeight - ARROW_HEIGHT - MARGIN;
+    bubbleY = Math.max(MARGIN, bubbleY);
+    const bubbleBottom = bubbleY + bubbleHeight;
+
+    // Balloon body
+    this.ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    this.ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    this.ctx.lineWidth = 2;
+    if (this.ctx.roundRect) {
+      this.ctx.beginPath();
+      this.ctx.roundRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, RADIUS);
+      this.ctx.fill();
+      this.ctx.stroke();
+    } else {
+      this.ctx.beginPath();
+      this.ctx.rect(bubbleX, bubbleY, bubbleWidth, bubbleHeight);
+      this.ctx.fill();
+      this.ctx.stroke();
+    }
+
+    // Arrow: tip ~6px above head, base on balloon bottom, centered on headX
+    const tipY = headY - TIP_ABOVE_HEAD;
+    const baseY = bubbleBottom;
+    const baseL = Math.max(bubbleX + 8, headX - ARROW_BASE_HALF);
+    const baseR = Math.min(bubbleX + bubbleWidth - 8, headX + ARROW_BASE_HALF);
+    this.ctx.beginPath();
+    this.ctx.moveTo(headX, tipY);
+    this.ctx.lineTo(baseR, baseY);
+    this.ctx.lineTo(baseL, baseY);
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.stroke();
+
+    // Text
+    this.ctx.fillStyle = '#111';
+    this.ctx.textAlign = 'center';
+    const textStartY = bubbleY + PADDING_V + LINE_HEIGHT / 2 + 4;
+    lines.forEach((line, i) => {
+      this.ctx.fillText(line, bubbleX + bubbleWidth / 2, textStartY + i * LINE_HEIGHT);
+    });
   },
 
   draw() {
     // 1. Fundo (Baseado na Zona)
     const zonesColors = [
-        ['#FF5E62', '#FF9966'], // Sant Antoni (Sunset)
-        ['#1abc9c', '#27ae60'], // Hippie (Nature)
-        ['#8e44ad', '#c0392b'], // Disco (Night)
-        ['#2980b9', '#ecf0f1'], // Town (White/Blue)
+        ['#FF5E62', '#FF9966'], // 0 Cala Saladeta
+        ['#1abc9c', '#27ae60'], // 1 Norte Hippie
+        ['#8e44ad', '#c0392b'], // 2 Universo
+        ['#2980b9', '#ecf0f1'], // 3 Ibiza
+        ['#5d4037', '#8d6e63'], // 4 Dalt Vila (historic)
     ];
 
-    // Gradiente de Fundo
+    // Background gradient
     if (this.currentZoneIndex === 0) {
-        // Sant Antoni: Céu Azul
+        // Sant Antoni: Blue sky
         const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
         gradient.addColorStop(0, '#4facfe');
         gradient.addColorStop(1, '#00f2fe');
         this.ctx.fillStyle = gradient;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Sea (before sun) so it never covers bubbles
+        this.drawSeaSpectrum();
 
         // Sol
         const sunX = this.canvas.width * 0.85;
@@ -773,7 +1091,7 @@ const FlappyGame = {
         this.ctx.fillStyle = gradient;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Colinas
+        // Hills
         this.ctx.fillStyle = '#2ecc71';
         this.ctx.beginPath();
         this.ctx.moveTo(0, this.groundY);
@@ -781,66 +1099,128 @@ const FlappyGame = {
         this.ctx.fill();
 
     } else if (this.currentZoneIndex === 2) {
-        // Disco: Noite
-        this.ctx.fillStyle = '#000000';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-        // Lasers
-        this.ctx.strokeStyle = `hsl(${this.frame % 360}, 100%, 50%)`;
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.moveTo(0, 0);
-        this.ctx.lineTo(this.canvas.width, Math.sin(this.frame * 0.1) * 100 + 100);
-        this.ctx.stroke();
-
-    } else {
-        // Ibiza Town (Dalt Vila)
+        // Universo (club): dark background, DJ and gold diggers dancing in the back, then lights
         const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
-        gradient.addColorStop(0, '#2980b9');
-        gradient.addColorStop(1, '#6dd5fa');
+        gradient.addColorStop(0, '#0a0015');
+        gradient.addColorStop(0.5, '#1a0525');
+        gradient.addColorStop(1, '#0d0012');
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.drawClubBackdrop();
+        const music = document.getElementById('bgMusic');
+        const audioTime = music && !music.paused ? music.currentTime : 0;
+        this.drawClubLights(audioTime, this.bpm);
+
+    } else if (this.currentZoneIndex === 3) {
+        // Ibiza (base city) — buildings; lights follow beat/spectrum
+        const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+        gradient.addColorStop(0, '#1a237e');
+        gradient.addColorStop(0.6, '#283593');
+        gradient.addColorStop(1, '#3949ab');
         this.ctx.fillStyle = gradient;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Silhueta Dalt Vila
-        this.ctx.fillStyle = '#ecf0f1';
-        this.ctx.fillRect(50, this.groundY - 60, 40, 60);
-        this.ctx.fillRect(80, this.groundY - 80, 50, 80);
-        this.ctx.fillRect(150, this.groundY - 50, 60, 50);
+        const gw = this.canvas.width;
+        const gy = this.groundY;
+        // Several buildings (silhouettes) — varied heights and widths
+        const buildings = [
+            { x: 10, w: 35, h: 70 },
+            { x: 48, w: 42, h: 95 },
+            { x: 93, w: 38, h: 55 },
+            { x: 134, w: 45, h: 85 },
+            { x: 182, w: 40, h: 65 },
+            { x: 225, w: 48, h: 90 },
+            { x: 276, w: 36, h: 75 },
+            { x: 315, w: 42, h: 60 },
+        ];
+        this.ctx.fillStyle = '#37474f';
+        buildings.forEach(b => {
+            this.ctx.fillRect(b.x, gy - b.h, b.w, b.h);
+        });
+        // Roof/band detail (orange/brown)
+        this.ctx.fillStyle = '#5d4037';
+        buildings.forEach(b => {
+            this.ctx.fillRect(b.x, gy - b.h, b.w, 6);
+        });
 
-        // Janelas que piscam com o beat (Solicitação do usuário)
-        // Color by beat: if onBeat, yellow/white; else dark gray
-        const windowColor = this.onBeat ?
-            `rgba(255, 255, 100, ${0.5 + Math.random() * 0.5})` : // Piscando
-            '#2c3e50'; // Apagado
-
-        this.ctx.fillStyle = windowColor;
-        this.ctx.fillRect(60, this.groundY - 40, 10, 10);
-        this.ctx.fillRect(100, this.groundY - 60, 10, 10);
-        this.ctx.fillRect(110, this.groundY - 30, 10, 10);
-        this.ctx.fillRect(160, this.groundY - 30, 10, 10);
-        this.ctx.fillRect(180, this.groundY - 40, 10, 10);
+        // Windows: follow spectrum and music beat (same as beach/club/wave)
+        let bassLevel = 0;
+        if (this.analyser && this.spectrumData) {
+            this.analyser.getByteFrequencyData(this.spectrumData);
+            bassLevel = (this.spectrumData[0] + this.spectrumData[1]) / 2;
+        }
+        const intensity = Math.min(1, bassLevel / 200); // 0..1 by bass
+        const beatFlash = this.onBeat || this.beatPulse > 1 ? 0.5 : 0;
+        buildings.forEach((b, bIdx) => {
+            const rows = Math.max(2, Math.floor(b.h / 22));
+            const cols = Math.max(1, Math.floor(b.w / 14));
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const wx = b.x + 6 + c * 14;
+                    const wy = gy - b.h + 12 + r * 22;
+                    const alpha = Math.min(1, 0.15 + intensity * 0.5 + beatFlash);
+                    this.ctx.fillStyle = alpha > 0.2
+                        ? `rgba(255, 235, 59, ${alpha})`
+                        : '#1a252f';
+                    this.ctx.fillRect(wx, wy, 8, 10);
+                }
+            }
+        });
+    } else if (this.currentZoneIndex === 4) {
+        // Dalt Vila (historic zone) — older tone, buildings
+        const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+        gradient.addColorStop(0, '#3e2723');
+        gradient.addColorStop(0.5, '#5d4037');
+        gradient.addColorStop(1, '#6d4c41');
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        const gy = this.groundY;
+        const buildings = [
+            { x: 15, w: 38, h: 65 }, { x: 56, w: 45, h: 80 }, { x: 104, w: 40, h: 55 },
+            { x: 147, w: 42, h: 70 }, { x: 192, w: 48, h: 85 }, { x: 243, w: 36, h: 60 },
+            { x: 282, w: 42, h: 75 },
+        ];
+        this.ctx.fillStyle = '#4e342e';
+        buildings.forEach(b => { this.ctx.fillRect(b.x, gy - b.h, b.w, b.h); });
+        this.ctx.fillStyle = '#3e2723';
+        buildings.forEach(b => { this.ctx.fillRect(b.x, gy - b.h, b.w, 5); });
+        let bassLevel = 0;
+        if (this.analyser && this.spectrumData) {
+            this.analyser.getByteFrequencyData(this.spectrumData);
+            bassLevel = (this.spectrumData[0] + this.spectrumData[1]) / 2;
+        }
+        const intensity = Math.min(1, bassLevel / 200);
+        const beatFlash = this.onBeat || this.beatPulse > 1 ? 0.4 : 0;
+        buildings.forEach((b) => {
+            const rows = Math.max(2, Math.floor(b.h / 22));
+            const cols = Math.max(1, Math.floor(b.w / 14));
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const wx = b.x + 6 + c * 14, wy = gy - b.h + 12 + r * 22;
+                    const alpha = Math.min(1, 0.12 + intensity * 0.4 + beatFlash);
+                    this.ctx.fillStyle = alpha > 0.2 ? `rgba(255, 213, 79, ${alpha})` : '#2c1810';
+                    this.ctx.fillRect(wx, wy, 8, 10);
+                }
+            }
+        });
     }
 
-    // 🌊 SEA SPECTRUM - Persistente em TODAS as fases agora!
-    // As ondas sonoras aparecem independente da zona
-    this.drawSeaSpectrum();
-
-    // Texto da Zona
-    this.ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    this.ctx.font = 'bold 30px Arial';
+    // Zone name (larger and more readable)
+    this.ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    this.ctx.font = 'bold 36px Arial';
     this.ctx.textAlign = 'center';
     this.ctx.fillText(this.zones[this.currentZoneIndex], this.canvas.width/2, 160);
 
-    // 2. Chão
-    // Aplicação de cores do chão por zona...
-    if (this.currentZoneIndex === 2) this.ctx.fillStyle = '#333';
+    // 2. Ground (color by zone)
+    if (this.currentZoneIndex === 0) this.ctx.fillStyle = '#e8d5b7';
     else if (this.currentZoneIndex === 1) this.ctx.fillStyle = '#27ae60';
+    else if (this.currentZoneIndex === 2) this.ctx.fillStyle = '#333';
     else if (this.currentZoneIndex === 3) this.ctx.fillStyle = '#95a5a6';
-    else this.ctx.fillStyle = '#e8d5b7'; /* Beach: light sand */
+    else this.ctx.fillStyle = '#5d4037'; // Dalt Vila
 
     this.ctx.fillRect(0, this.groundY, this.canvas.width, 20);
 
-    // 3. Jogador (Pixel Art Programático)
+    // 3. Player (Procedural Pixel Art)
     const pulse = this.beatPulse || 1;
     const pulseW = this.player.w * pulse;
     const pulseH = this.player.h * pulse;
@@ -858,27 +1238,9 @@ const FlappyGame = {
 
 
 
-    // -- Lyrics Speech Bubble --
-    const music = document.getElementById('bgMusic');
-    if (music && !music.paused) {
-        const currentTime = music.currentTime;
-        // Find active lyric (lasts 3.5 seconds)
-        const activeLyric = this.lyricsLines.find(l => currentTime >= l.time && currentTime < l.time + 3.5);
-
-        if (activeLyric) {
-            this.drawLyricsBubble(this.player.x + 20, this.player.y - 10, activeLyric.text);
-        }
-    }
-
-    // 4. Entities (only Money/Drink use money sprite; Chica, Sunbather, Flower = drawEntity)
+    // 4. Entities (during EVENT entities are frozen; we draw all, including the event NPC)
     for (let e of this.entities) {
-        // During EVENT, Chica is drawn at fixed position — skip drawing her again here
-        if (this.state === 'EVENT' && this.eventTarget && e === this.eventTarget) continue;
-        if (e.type === 'GOOD' && (e.name === 'Money' || e.name === 'Drink') && this.assets.money.complete && this.assets.money.naturalWidth > 0) {
-            this.ctx.drawImage(this.assets.money, e.x, e.y, e.w, e.h);
-        } else {
-            this.drawEntity(e);
-        }
+        this.drawEntity(e);
     }
 
     // 5. FX
@@ -917,23 +1279,81 @@ const FlappyGame = {
         this.ctx.globalAlpha = 1.0;
     }
 
-    // EVENT: Chica next to player + 5s conversation
-    if (this.state === 'EVENT' && this.eventTarget) {
-      const chicaX = this.player.x + this.player.w + 12;
-      const chicaY = this.groundY - 60;
-      this.drawChica(chicaX, chicaY, 40, 60);
-      if (this.eventStep === 2) {
-        const half = 150; // first 2.5s Chica, then 2.5s player
-        if (this.eventTimer < half) {
-          this.drawSpeechBubble(chicaX + 20, chicaY - 15, "Hey Miranda, give me a mojito.");
-        } else {
-          this.drawSpeechBubble(this.player.x + 20, this.player.y - 25, "Sure! Here you go.");
-        }
-      }
+    // PRISON: luz vermelha/azul (1s)
+    if (this.state === 'PRISON' && this.prisonFlashFrames > 0) {
+      const flash = this.prisonFlashFrames / 60;
+      this.ctx.fillStyle = (Math.floor(this.frame / 8) % 2 === 0) ? `rgba(200, 0, 0, ${0.4 * flash})` : `rgba(0, 0, 200, ${0.4 * flash})`;
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      this.ctx.fillStyle = '#fff';
+      this.ctx.font = 'bold 28px Arial';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('🚓 BUSTED', this.canvas.width / 2, this.canvas.height / 2);
     }
 
-    // 6. Real-time Map HUD
+    // 6. Real-time Map HUD (draw before bubble so it doesn’t cover)
     this.drawHUD();
+
+    // Speech bubbles: above scenery; during EVENT only the NPC bubble (anchored at NPC head)
+    this.ctx.save();
+    this.ctx.globalCompositeOperation = 'source-over';
+    if (this.state === 'EVENT' && this.npcEvent.active && this.npcEvent.npc) {
+      const ev = this.npcEvent;
+      const isChicaReply = ev.type === 'chica' && ev.replyText && ev.timer >= ev.duration / 2;
+      const who = isChicaReply ? this.player : ev.npc;
+      const msg = isChicaReply ? ev.replyText : ev.text;
+      if (msg) this.drawSpeechBubble(who, msg);
+    } else {
+      const lyricsText = LyricsController.activeText && LyricsController.activeText.trim().length
+        ? LyricsController.activeText
+        : "";
+      const vocalOk = !this.useVocalFilter || this.getVocalEnergy() >= this.vocalThreshold;
+      if (lyricsText && vocalOk) this.drawSpeechBubble(this.player, lyricsText);
+    }
+    this.ctx.restore();
+
+    // Debug overlay (D) — invisible to players; see DEBUG_CALIBRATION.md
+    if (this.debugOverlay) this.drawDebugOverlay();
+  },
+
+  // Debug overlay: time, lyric index, offset, vocal energy, nudge. Toggle with [D].
+  // [ / ] = offset; [ , . ] = nudge current line ±0.05s; [V] = vocal filter on/off.
+  drawDebugOverlay() {
+    const music = document.getElementById('bgMusic');
+    const t = music && !music.paused ? music.currentTime : 0;
+    const adj = t + (this.lyricsOffsetSeconds || 0);
+    const next = this.lyricsLines[LyricsController.index];
+    const vocal = Math.round(this.getVocalEnergy());
+    const lines = [
+      `time: ${t.toFixed(2)}s`,
+      `adj: ${adj.toFixed(2)}s (offset ${(this.lyricsOffsetSeconds || 0).toFixed(2)})`,
+      `lyric #${LyricsController.index} ${next ? `@ ${next.time.toFixed(1)}s` : "—"}`,
+      `active: "${(LyricsController.activeText || "").slice(0, 18)}${(LyricsController.activeText || "").length > 18 ? "…" : ""}"`,
+      `vocal: ${vocal}  thresh: ${this.vocalThreshold}  [V] ${this.useVocalFilter ? "on" : "off"}  [ - + ] thresh`,
+      `LEAD: ${LYRICS_LEAD}s  [ / ] offset  [ , . ] nudge line #${LyricsController.index}`,
+      `zone: ${this.currentZoneIndex}  BPM: ${this.bpm}`,
+      `[D] toggle debug`
+    ];
+    const pad = 10;
+    const lineH = 16;
+    const w = 280;
+    const h = lines.length * lineH + pad * 2;
+    const x = this.canvas.width - w - pad;
+    const y = pad;
+    this.ctx.save();
+    this.ctx.fillStyle = "rgba(0,0,0,0.75)";
+    this.ctx.strokeStyle = "rgba(255,255,255,0.4)";
+    this.ctx.lineWidth = 1;
+    if (this.ctx.roundRect) this.ctx.roundRect(x, y, w, h, 6);
+    else this.ctx.rect(x, y, w, h);
+    this.ctx.fill();
+    this.ctx.stroke();
+    this.ctx.fillStyle = "#b0f0b0";
+    this.ctx.font = "12px monospace";
+    this.ctx.textAlign = "left";
+    lines.forEach((line, i) => {
+      this.ctx.fillText(line, x + pad, y + pad + (i + 1) * lineH);
+    });
+    this.ctx.restore();
   },
 
   drawPlayer(x, y, w, h) {
@@ -971,12 +1391,12 @@ const FlappyGame = {
   },
 
   drawChica(x, y, w, h) {
-      // Cabelo
+      // Hair
       this.ctx.fillStyle = '#f4d03f';
       this.ctx.fillRect(x + 6, y - 4, 28, 14);
       this.ctx.fillRect(x + 4, y, 6, 12);
       this.ctx.fillRect(x + w - 10, y, 6, 12);
-      // Rosto (pele)
+      // Face (skin)
       this.ctx.fillStyle = '#ffefd5';
       this.ctx.fillRect(x + 6, y, 28, 22);
       this.ctx.fillStyle = '#1a1a1a';
@@ -984,7 +1404,7 @@ const FlappyGame = {
       this.ctx.fillStyle = '#2c3e50';
       this.ctx.fillRect(x + 14, y + 7, 8, 4);
       this.ctx.fillRect(x + 24, y + 7, 8, 4);
-      // Torso topless — ombros/estômago em pele normal; seios em tom mais claro para destacar
+      // Topless torso — shoulders/stomach in normal skin; breasts in lighter tone to stand out
       this.ctx.fillStyle = '#ffefd5';
       this.ctx.fillRect(x + 10, y + 28, 20, 8);
       this.ctx.fillRect(x + 4, y + 46, w - 8, 6);
@@ -1100,36 +1520,6 @@ const FlappyGame = {
       }
   },
 
-  drawSpeechBubble(x, y, text) {
-      if (!text) return;
-      this.ctx.font = 'bold 12px Arial';
-      const width = this.ctx.measureText(text).width + 20;
-      const height = 30;
-
-      // Bubble Body
-      this.ctx.fillStyle = 'white';
-      this.ctx.beginPath();
-      // Use standard roundRect
-      if (this.ctx.roundRect) {
-         this.ctx.roundRect(x, y - height - 10, width, height, 10);
-      } else {
-         this.ctx.rect(x, y - height - 10, width, height);
-      }
-      this.ctx.fill();
-
-      // Triangle Tail
-      this.ctx.beginPath();
-      this.ctx.moveTo(x + 10, y - 10);
-      this.ctx.lineTo(x + 20, y);
-      this.ctx.lineTo(x + 30, y - 10);
-      this.ctx.fill();
-
-      // Text
-      this.ctx.fillStyle = 'black';
-      this.ctx.textAlign = 'left';
-      this.ctx.fillText(text, x + 10, y - height + 10);
-  },
-
   drawHUD() {
       // Lives (Hearts)
       const heartSize = 25;
@@ -1142,7 +1532,7 @@ const FlappyGame = {
         this.ctx.fillText('❤️', startX + (i * 25), startY);
     }
 
-    // Stats: tudo no centro superior (entre mapa e sol) — PTS e energia
+    // Stats: all in top center (between map and sun) — PTS and energy
     const centerX = this.canvas.width / 2;
     const topY = 28;
     this.ctx.font = 'bold 24px Courier New';
@@ -1151,9 +1541,22 @@ const FlappyGame = {
     this.ctx.fillText('PTS: ' + this.score, centerX, topY);
     this.ctx.fillStyle = '#f1c40f';
     this.ctx.fillText('⚡ ' + this.energy, centerX, topY + 30);
+    this.ctx.fillStyle = '#27ae60';
+    this.ctx.fillText('🍎 ' + this.money, centerX, topY + 60);
+    if (this.drugEffect) {
+      this.ctx.fillStyle = 'rgba(255, 100, 100, 0.9)';
+      this.ctx.font = 'bold 16px Arial';
+      this.ctx.fillText('💊', centerX - 80, topY + 30);
+    }
 
-    // Map Config
-      const mapSize = 70; // Reduced to 70px for better spacing
+    // Lyrics offset debug (small)
+    this.ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    this.ctx.font = 'bold 12px Arial';
+    this.ctx.textAlign = 'right';
+    this.ctx.fillText(`LYR Δ: ${(this.lyricsOffsetSeconds || 0).toFixed(2)}s  ([ / ])`, this.canvas.width - 12, 16);
+
+    // Map Config — upper left corner
+      const mapSize = 70;
       const mapX = 20;
       const mapY = 20;
 
@@ -1169,20 +1572,16 @@ const FlappyGame = {
           this.ctx.strokeRect(mapX, mapY, mapSize, mapSize);
           this.ctx.globalAlpha = 1.0;
 
-          // Define Geographical Route Points (Based on User Feedback)
-          // 1. Sant Antoni (Left/West)
-          // 2. Hippie Markets (Top/North)
-          // 3. Clubs/Disco (Center)
-          // 4. Ibiza Town (South-East)
+          // Route: Cala Saladeta → Norte Hippie → Universo → Ibiza → Dalt Vila
           const points = [
-              {x: 0.2, y: 0.6},  // Start: Sant Antoni (Left)
-              {x: 0.5, y: 0.2},  // Zone 1: Hippie (Top)
-              {x: 0.5, y: 0.5},  // Zone 2: Clubs (Center)
-              {x: 0.8, y: 0.8},  // Zone 3: Ibiza Town (South-East)
-              {x: 0.2, y: 0.6}   // Loop back
+              {x: 0.2, y: 0.6},  // 0 Cala Saladeta
+              {x: 0.5, y: 0.2},  // 1 Norte Hippie
+              {x: 0.5, y: 0.5},  // 2 Universo
+              {x: 0.75, y: 0.7}, // 3 Ibiza
+              {x: 0.8, y: 0.85}, // 4 Dalt Vila
+              {x: 0.2, y: 0.6}   // back
           ];
 
-          // Draw Route Lines (Static)
           this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
           this.ctx.lineWidth = 2;
           this.ctx.beginPath();
@@ -1192,13 +1591,9 @@ const FlappyGame = {
           }
           this.ctx.stroke();
 
-          // Interpolate Position
-          // Max Score for loop = 120
-          const maxScore = 120;
-          const progress = Math.min(this.score / maxScore, 0.99); // 0.0 to 1.0
-
-          // Determine Segment (4 segments total)
-          const totalSegments = points.length - 1; // 4
+          const maxScore = 140;
+          const progress = Math.min(this.score / maxScore, 0.99);
+          const totalSegments = points.length - 1; // 5
           const scaledProgress = progress * totalSegments; // 0.0 to 4.0
           const currentSegmentIndex = Math.floor(scaledProgress); // 0, 1, 2, 3
           const t = scaledProgress - currentSegmentIndex; // 0.0 to 1.0 within segment
@@ -1224,28 +1619,23 @@ const FlappyGame = {
           this.ctx.lineWidth = 1;
           this.ctx.stroke();
 
-          // Ibiza Town only: Entry 60€ (zone name shown only in main HUD — big text)
+          // Ibiza (zone 3): Entry in HUD
           if (this.currentZoneIndex === 3) {
-            this.ctx.fillStyle = '#fff';
+            this.ctx.fillStyle = '#f1c40f';
             this.ctx.font = 'bold 10px Arial';
             this.ctx.textAlign = 'left';
-            this.ctx.fillStyle = '#f1c40f';
-            this.ctx.fillText('Entry 60€', mapX, mapY + mapSize + 64);
+            this.ctx.fillText('Entry 60', mapX, mapY + mapSize + 64);
           }
       }
   },
 
 
 
-    spawnEntity() {
+    spawnEntity(musicTime = 0) {
       // 🎯 STRICT ZONE-BASED SPAWNING
-      // No more generic "isBad" check at the top level.
-      // Logic must flow from the Current Zone Index.
-
       const rand = Math.random();
       let type, name, value, w, h, y, color;
 
-      // Default safe entity (can be overridden)
       type = 'GOOD';
       name = 'Drink';
       value = 10;
@@ -1254,21 +1644,37 @@ const FlappyGame = {
       y = this.groundY - 50 - (Math.random() * 50);
 
       if (this.currentZoneIndex === 0) {
-          // ZONE 0: BEACH — Chica (collision) and seagulls in the sky (decor)
+          // ZONE 0: BEACH — Chica ≈2x; mais gaivotas; fruits e drinks
           if (rand < 0.25) {
               name = 'ChicaSilhouette';
               w = 40; h = 50;
               y = this.groundY - 50;
-              value = 50;
+              value = 30;
               color = '#e67e22';
               type = 'GOOD';
+          } else if (rand < 0.45) {
+              name = 'Fruit';
+              value = 10;
+              w = 22; h = 22;
+              y = this.groundY - 50 - (Math.random() * 80);
+              color = '#e74c3c';
+              type = 'GOOD';
+          } else if (rand < 0.65) {
+              name = 'Drink';
+              value = 10;
+              w = 20; h = 20;
+              y = this.groundY - 50 - (Math.random() * 80);
+              color = '#f1c40f';
+              type = 'GOOD';
           } else {
+               // Gaivotas: mais presentes na praia (35%)
                name = 'Seagull';
                w = 40; h = 20;
-               y = this.groundY - 150 - (Math.random() * 120);
+               y = this.groundY - 220 - (Math.random() * 120);
                value = 0;
-               color = ['#fff', '#dfe6e9', '#ffeaa7', '#fd79a8', '#81ecec', '#a29bfe', '#fab1a0', '#74b9ff'][Math.floor(Math.random() * 8)];
-               type = 'DECOR';
+               const seagullColors = ['#fff', '#dfe6e9', '#ffeaa7', '#fd79a8', '#81ecec', '#a29bfe', '#fab1a0', '#74b9ff', '#55efc4', '#e17055', '#b2bec3'];
+               color = seagullColors[Math.floor(Math.random() * seagullColors.length)];
+               type = 'BAD';
           }
 
       } else if (this.currentZoneIndex === 1) {
@@ -1295,28 +1701,38 @@ const FlappyGame = {
            }
 
       } else if (this.currentZoneIndex === 2) {
-          // 🪩 ZONE 2: CLUB
-          // Spawns: Gold Digger (Bad), Drinks
-
-          if (rand < 0.5) {
-                // Gold Digger (Bad)
-                name = 'GoldDigger';
-                w = 35; h = 50;
-                y = this.groundY - 50;
-                value = 0;
-                color = '#d4af37';
-                type = 'BAD';
+          // ZONE 2: UNIVERSO (clube) — Dealer, Gold Digger 50/50, Police (quando droga), Drinks
+          const policeBlocked = this.policeSpawnBlockedUntil > this.frame;
+          if (this.drugEffect && !policeBlocked && rand < 0.35) {
+              name = 'Police';
+              w = 60; h = 30;
+              y = this.groundY - 40;
+              value = 0;
+              color = '#2c3e50';
+              type = 'BAD';
+          } else if (rand < 0.25) {
+              name = 'Dealer';
+              w = 40; h = 55;
+              y = this.groundY - 55;
+              value = 80;
+              color = '#1a1a1a';
+              type = 'GOOD';
+          } else if (rand < 0.5) {
+              name = 'GoldDigger';
+              w = 35; h = 50;
+              y = this.groundY - 50;
+              value = 0;
+              color = '#d4af37';
+              type = 'BAD';
           } else {
-               // Drinks/Party items
-               name = 'Drink';
+              name = 'Drink';
           }
 
       } else if (this.currentZoneIndex === 3) {
-          // 🚓 ZONE 3: IBIZA TOWN (Dalt Vila)
-          // Spawns: Police (Bad), Drones (Bad - if valid here)
-
-          if (rand < 0.5) {
-              // Police Car
+          // ZONE 3: IBIZA (cidade base) — Police ativa, Drones, Drinks
+          const policeBlocked = this.policeSpawnBlockedUntil > this.frame;
+          const policeChance = this.drugEffect ? 0.7 : 0.5;
+          if (!policeBlocked && rand < policeChance) {
               name = 'Police';
               w = 60; h = 30;
               y = this.groundY - 40;
@@ -1331,21 +1747,47 @@ const FlappyGame = {
               color = '#e74c3c';
               type = 'BAD';
           } else {
-              // High risk zone, fewer goods
               name = 'Drink';
+          }
+      } else if (this.currentZoneIndex === 4) {
+          // ZONE 4: DALT VILA (historic) — medium difficulty, police, drinks
+          const policeBlocked = this.policeSpawnBlockedUntil > this.frame;
+          if (!policeBlocked && rand < 0.4) {
+              name = 'Police';
+              w = 60; h = 30;
+              y = this.groundY - 40;
+              value = 0;
+              color = '#2c3e50';
+              type = 'BAD';
+          } else if (rand < 0.6) {
+              name = 'Drink';
+          } else {
+              name = 'Drone';
+              w = 40; h = 30;
+              y = this.groundY - 90;
+              color = '#e74c3c';
+              type = 'BAD';
           }
       }
 
       // Final Push
+      let spawnX = this.canvas.width;
+      let direction = -1;
+      // Seagulls: random direction — from left (1) or from right (-1)
+      if (name === 'Seagull') {
+          direction = Math.random() < 0.5 ? 1 : -1;
+          spawnX = direction === 1 ? -w - 20 : this.canvas.width;
+      }
       this.entities.push({
           type: type,
           name: name,
           value: value,
-          x: this.canvas.width,
+          x: spawnX,
           y: y,
           w: w,
           h: h,
-          color: color
+          color: color,
+          direction: name === 'Seagull' ? direction : undefined
       });
   },
 
@@ -1388,7 +1830,7 @@ const FlappyGame = {
            this.ctx.fillRect(e.x, e.y, 10, 5); // Prop L
            this.ctx.fillRect(e.x + 30, e.y, 10, 5); // Prop R
       } else if (e.name === 'Seagull') {
-           // Bird (multiple colors)
+           // Seagull: various colors, flies left→right or right→left
            const birdColor = e.color || '#fff';
            this.ctx.fillStyle = birdColor;
            this.ctx.beginPath();
@@ -1413,14 +1855,22 @@ const FlappyGame = {
            this.ctx.fillStyle = '#000'; // Sunglasses
            this.ctx.fillRect(e.x - 5, e.y + 10, 20, 5);
 
-      } else if (e.name === 'Money' && this.assets.money.complete) {
-            this.ctx.drawImage(this.assets.money, e.x, e.y, e.w, e.h);
-      } else if (e.name === 'Drink') {
-           this.ctx.fillStyle = '#9b59b6'; // Purple Drink
-           this.ctx.fillRect(e.x + 10, e.y, 10, 30); // Glass
-           this.ctx.fillStyle = '#e74c3c'; // Umbrella
+      } else if (e.name === 'Fruit') {
+           // Fruit (apple / red fruit)
+           this.ctx.fillStyle = e.color || '#e74c3c';
            this.ctx.beginPath();
-           this.ctx.arc(e.x + 15, e.y, 15, Math.PI, 0);
+           this.ctx.arc(e.x + e.w/2, e.y + e.h/2, Math.min(e.w, e.h)/2 - 2, 0, Math.PI*2);
+           this.ctx.fill();
+           this.ctx.strokeStyle = '#c0392b';
+           this.ctx.lineWidth = 1;
+           this.ctx.stroke();
+      } else if (e.name === 'Drink') {
+           // Cocktail (glass + umbrella)
+           this.ctx.fillStyle = '#9b59b6';
+           this.ctx.fillRect(e.x + 6, e.y + 4, 8, 16);
+           this.ctx.fillStyle = '#e74c3c';
+           this.ctx.beginPath();
+           this.ctx.arc(e.x + 10, e.y, 10, Math.PI, 0);
            this.ctx.fill();
       } else {
           // Default
@@ -1460,17 +1910,12 @@ const FlappyGame = {
     const menuBtn = document.getElementById('flappy-menu-btn');
 
     if (this.state === 'START') {
-        // Show Start Screen in Overlay
-        if (overlay) overlay.style.display = 'flex';
-        if (overlayContent) overlayContent.style.display = 'block';
-        if (msgEl) msgEl.innerText = "Start Season!";
+        // Game screen: no overlay "Tap to Start Season" — only on the entry screen is the Start Season button
+        if (overlay) overlay.style.display = 'none';
         if (statsEl) statsEl.style.display = 'none';
-
-        // Hide HUD Score
         if (hudScoreEl) hudScoreEl.style.display = 'none';
-
-        if (restartBtn) restartBtn.style.display = 'none';
-        if (menuBtn) menuBtn.style.display = 'block';
+        if (restartBtn) { restartBtn.style.display = 'none'; restartBtn.classList.add('btn-hidden'); }
+        if (menuBtn) { menuBtn.style.display = 'none'; menuBtn.classList.add('btn-hidden'); }
 
     } else if (this.state === 'PLAYING') {
         // HIDE Overlay completely
@@ -1494,10 +1939,9 @@ const FlappyGame = {
         if (finalScoreEl) finalScoreEl.innerText = `Points: ${this.score}`;
         if (zoneResEl) zoneResEl.innerText = `Last Zone: ${this.zones[this.currentZoneIndex]}`;
 
-        if (restartBtn) restartBtn.style.display = 'block';
-        if (menuBtn) menuBtn.style.display = 'block';
-
-        // Hide HUD Score so it doesn't overlap
+        if (overlayContent) overlayContent.style.pointerEvents = 'auto';
+        if (restartBtn) { restartBtn.style.display = 'block'; restartBtn.classList.remove('btn-hidden'); }
+        if (menuBtn) { menuBtn.style.display = 'block'; menuBtn.classList.remove('btn-hidden'); }
         if (hudScoreEl) hudScoreEl.style.display = 'none';
     }
   },
@@ -1509,49 +1953,185 @@ const FlappyGame = {
      this.state = 'START';
   },
 
-  drawLyricsBubble(x, y, text) {
-      if (!text) return;
-      this.ctx.font = 'bold 12px Arial';
-      const width = this.ctx.measureText(text).width + 20;
-      const height = 30;
+  // 🎧 Discoteca: DJ (stacked box style) + 2 blonde dancers (Gāogāo) with arms animation
+  drawClubBackdrop() {
+    const gy = this.groundY;
+    const w = this.canvas.width;
 
-      // Bubble Body
-      this.ctx.fillStyle = 'white';
+    this.ctx.globalAlpha = 0.85;
+
+    // =========================
+    // 🎧 DJ — stacked box style
+    // =========================
+    const djX = w * 0.65;
+    const djY = gy - 120;
+
+    // Bottom box
+    this.ctx.fillStyle = '#1a1a1a';
+    this.ctx.fillRect(djX, djY + 60, 80, 30);
+
+    // Middle box
+    this.ctx.fillStyle = '#222';
+    this.ctx.fillRect(djX + 5, djY + 30, 70, 30);
+
+    // Top box
+    this.ctx.fillStyle = '#2a2a2a';
+    this.ctx.fillRect(djX + 10, djY, 60, 30);
+
+    // DJ Head
+    this.ctx.fillStyle = '#f1c27d';
+    this.ctx.beginPath();
+    this.ctx.arc(djX + 40, djY - 10, 14, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    // Headphones
+    this.ctx.strokeStyle = '#444';
+    this.ctx.lineWidth = 3;
+    this.ctx.beginPath();
+    this.ctx.arc(djX + 40, djY - 10, 18, Math.PI, 0);
+    this.ctx.stroke();
+
+    // =========================
+    // 💃 Gāogāo Dancers (2)
+    // Blonde, arms up animation
+    // =========================
+    const dancers = [
+      { x: w * 0.3, baseY: gy - 55, phase: 0 },
+      { x: w * 0.45, baseY: gy - 55, phase: Math.PI }
+    ];
+
+    dancers.forEach((d, i) => {
+      const armUp = Math.sin(this.frame * 0.15 + d.phase) > 0;
+      const y = d.baseY + Math.sin(this.frame * 0.1) * 4;
+
+      // Hair (blonde)
+      this.ctx.fillStyle = '#f7dc6f';
       this.ctx.beginPath();
-      if (this.ctx.roundRect) {
-         this.ctx.roundRect(x, y - height - 10, width, height, 10);
+      this.ctx.arc(d.x, y - 18, 10, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // Head
+      this.ctx.fillStyle = '#ffdbac';
+      this.ctx.beginPath();
+      this.ctx.arc(d.x, y - 10, 8, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // Body
+      this.ctx.fillStyle = '#d4af37';
+      this.ctx.fillRect(d.x - 6, y, 12, 28);
+
+      // Arms
+      this.ctx.strokeStyle = '#ffdbac';
+      this.ctx.lineWidth = 4;
+      this.ctx.beginPath();
+      if (armUp) {
+        // Arms up
+        this.ctx.moveTo(d.x - 6, y + 4);
+        this.ctx.lineTo(d.x - 14, y - 18);
+        this.ctx.moveTo(d.x + 6, y + 4);
+        this.ctx.lineTo(d.x + 14, y - 18);
       } else {
-         this.ctx.rect(x, y - height - 10, width, height);
+        // Arms down
+        this.ctx.moveTo(d.x - 6, y + 6);
+        this.ctx.lineTo(d.x - 14, y + 18);
+        this.ctx.moveTo(d.x + 6, y + 6);
+        this.ctx.lineTo(d.x + 14, y + 18);
       }
-      this.ctx.fill();
+      this.ctx.stroke();
 
-      // Triangle Tail
-      this.ctx.beginPath();
-      this.ctx.moveTo(x + 10, y - 10);
-      this.ctx.lineTo(x + 20, y);
-      this.ctx.lineTo(x + 30, y - 10);
-      this.ctx.fill();
+      // Legs
+      this.ctx.fillStyle = '#b8860b';
+      this.ctx.fillRect(d.x - 8, y + 28, 6, 16);
+      this.ctx.fillRect(d.x + 2, y + 28, 6, 16);
+    });
 
-      // Texto
-      this.ctx.fillStyle = 'black';
-      this.ctx.textAlign = 'left';
-      this.ctx.fillText(text, x + 10, y - height + 10);
+    this.ctx.globalAlpha = 1;
   },
 
-  // 🌊 SEA SPECTRUM - O oceano respira com a música
+  // 🎧 CLUB LIGHTS — Universo: pulsing lights synced with music (BPM, beat, drop, volume)
+  drawClubLights(audioTime, bpm) {
+      const bpmFactor = (2 * Math.PI * bpm) / 60; // rad/s for sin
+      const baseIntensity = 0.3 + 0.4 * (0.5 + 0.5 * Math.sin(audioTime * bpmFactor));
+      const section = this.currentSection || this.sections[0];
+      const isDrop = section.type === 'drop' || section.type === 'chorus';
+      const dropBoost = isDrop ? 0.35 : 0.1;
+      let volumeIntensity = 0.2;
+      if (this.analyser && this.spectrumData) {
+          this.analyser.getByteFrequencyData(this.spectrumData);
+          const bass = (this.spectrumData[0] + this.spectrumData[1]) / 2;
+          volumeIntensity = Math.min(0.6, bass / 200);
+      }
+      const beatFlash = this.onBeat || this.beatPulse > 1 ? 0.4 : 0;
+      const intensity = Math.min(1, baseIntensity + dropBoost + volumeIntensity + beatFlash);
+
+      const w = this.canvas.width;
+      const h = this.canvas.height;
+      const gy = this.groundY;
+
+      // Pulsing gradients (smooth, not aggressive)
+      const gradientPulse = 0.15 + 0.25 * intensity;
+      const grad = this.ctx.createLinearGradient(0, 0, w, h);
+      grad.addColorStop(0, `rgba(138, 43, 226, ${gradientPulse * 0.4})`);
+      grad.addColorStop(0.5, `rgba(75, 0, 130, ${gradientPulse * 0.3})`);
+      grad.addColorStop(1, `rgba(255, 20, 147, ${gradientPulse * 0.25})`);
+      this.ctx.fillStyle = grad;
+      this.ctx.globalAlpha = 0.5 + 0.3 * Math.sin(audioTime * bpmFactor * 0.5);
+      this.ctx.fillRect(0, 0, w, h);
+      this.ctx.globalAlpha = 1;
+
+      // Diagonal lines (soft lasers) — intensity by beat/drop
+      const lineCount = 5;
+      for (let i = 0; i < lineCount; i++) {
+          const phase = (i / lineCount) * Math.PI * 0.4 + audioTime * 0.3;
+          const x1 = -20 + (w + 40) * (i / (lineCount + 1)) + Math.sin(phase) * 30;
+          const y1 = 0;
+          const x2 = x1 + w * 0.4 + Math.cos(phase) * 40;
+          const y2 = h;
+          this.ctx.strokeStyle = `rgba(200, 100, 255, ${0.12 + intensity * 0.2})`;
+          this.ctx.lineWidth = 2;
+          this.ctx.beginPath();
+          this.ctx.moveTo(x1, y1);
+          this.ctx.lineTo(x2, y2);
+          this.ctx.stroke();
+      }
+
+      // Strobes suaves (flashes no beat/drop)
+      if (this.onBeat || (isDrop && intensity > 0.6)) {
+          const flashAlpha = Math.min(0.25, 0.08 + beatFlash * 0.2);
+          this.ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+          this.ctx.fillRect(0, 0, w, h);
+      }
+
+      // Pulsing horizontal bars (above ground)
+      const barY = gy - 40;
+      const barH = 8;
+      for (let i = 0; i < 8; i++) {
+          const phase = audioTime * bpmFactor + i * 0.8;
+          const segW = w / 8;
+          const x = i * segW + 4;
+          const barW = segW * (0.3 + 0.4 * (0.5 + 0.5 * Math.sin(phase)));
+          this.ctx.fillStyle = `rgba(255, 105, 180, ${0.2 + intensity * 0.25})`;
+          this.ctx.fillRect(x, barY, Math.max(10, barW), barH);
+      }
+  },
+
+  // 🌊 SEA SPECTRUM - Ocean breathes with the music (Cala Saladeta ONLY)
   drawSeaSpectrum() {
+      if (this.currentZoneIndex === 2) {
+          throw new Error('Waves are not allowed in club zone');
+      }
       const seaHeight = 60;
       const seaY = this.groundY - seaHeight;
       const waveCount = 32;
       const segmentWidth = this.canvas.width / waveCount;
 
-      // Comportamento baseado na seção atual
+      // Behaviour based on current section
       const section = this.currentSection || this.sections[0];
       const isCalm = section.seaCalm;
       const isHook = section.type === 'hook';
       const isChorus = section.type === 'chorus';
 
-      // Obter dados de frequência se disponíveis
+      // Get frequency data if available
       let freqData = new Uint8Array(waveCount);
       if (this.analyser && this.spectrumData) {
           this.analyser.getByteFrequencyData(this.spectrumData);
@@ -1561,7 +2141,7 @@ const FlappyGame = {
           }
       }
 
-      // Cores dinâmicas do oceano baseadas na vibe da seção
+      // Ocean dynamic colours based on section vibe
       let colorTop, colorMid, colorDeep;
 
       if (this.zenMode) {
@@ -1570,22 +2150,22 @@ const FlappyGame = {
           colorMid = 'rgba(255, 160, 122, 0.5)'; // Light Salmon
           colorDeep = 'rgba(219, 112, 147, 0.3)'; // Pale Violet Red
       } else if (isHook) {
-          // Hook: Espelho/transcendente - mais claro, etéreo
+          // Hook: Mirror/transcendent — lighter, ethereal
           colorTop = 'rgba(200, 230, 255, 0.7)';
           colorMid = 'rgba(150, 200, 255, 0.5)';
           colorDeep = 'rgba(100, 180, 255, 0.3)';
       } else if (isCalm) {
-          // Bridge/Outro: Calmo - azuis suaves
+          // Bridge/Outro: Calm — soft blues
           colorTop = 'rgba(0, 198, 251, 0.6)';
           colorMid = 'rgba(0, 119, 182, 0.4)';
           colorDeep = 'rgba(2, 62, 138, 0.3)';
       } else if (isChorus) {
-          // Chorus: Ativo - vibrante, intenso
+          // Chorus: Active — vibrant, intense
           colorTop = 'rgba(0, 220, 255, 0.9)';
           colorMid = 'rgba(0, 150, 220, 0.7)';
           colorDeep = 'rgba(0, 80, 160, 0.6)';
       } else {
-          // Padrão: Azuis normais
+          // Default: Normal blues
           colorTop = 'rgba(0, 198, 251, 0.8)';
           colorMid = 'rgba(0, 119, 182, 0.55)';
           colorDeep = 'rgba(2, 62, 138, 0.3)';
