@@ -1,55 +1,155 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IBZ the GAME</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <main id="game">
-    <section id="map" style="position: relative; width: 800px; height: 600px; background: #bfe7f2;">
-      <img src="assets/images/istockphoto-516624722-612x612.jpg" alt="Mapa de Ibiza" style="width: 100%; height: 100%; object-fit: contain; display: block;" />
-      <!-- Marcadores dos pontos -->
-      <!-- ALTERE OS VALORES DE LEFT E TOP ABAIXO PARA MUDAR A POSIÇÃO DO PONTO VERMELHO (IBIZA CENTRO) -->
-      <div class="marker" id="marker-ibiza-centro" style="left: 50.3%; top: 66.0%; background: red; border: 2px solid #fff; width: 14px; height: 14px;" title="Ibiza Centro"></div>
-      <!-- FIM DO TRECHO DE ALTERAÇÃO DA POSIÇÃO -->
-      <div class="marker" id="marker-sant-antoni" style="left: 30%; top: 50%; background: orange; border: 2px solid #fff;" title="Sant Antoni"></div>
-      <div class="marker" id="marker-ibiza-town" style="left: 70%; top: 60%; background: green; border: 2px solid #fff;" title="Ibiza Town"></div>
-      <div class="marker" id="marker-disco-area" style="left: 58%; top: 28%; background: blue; border: 2px solid #fff;" title="Disco Area"></div>
-      <div class="marker" id="marker-hippie" style="left: 30%; top: 22%; background: purple; border: 2px solid #fff;" title="North / Hippie"></div>
-      <!-- Legenda -->
-      <div style="position: absolute; left: 10px; bottom: 10px; background: rgba(255,255,255,0.9); padding: 10px 18px; border-radius: 10px; font-size: 15px; box-shadow: 0 2px 8px #0002;">
-        <div style="margin-bottom: 4px;"><span style="display:inline-block;width:16px;height:16px;background:red;border-radius:50%;margin-right:6px;vertical-align:middle;"></span> Ibiza Centro</div>
-        <div style="margin-bottom: 4px;"><span style="display:inline-block;width:16px;height:16px;background:orange;border-radius:50%;margin-right:6px;vertical-align:middle;"></span> Sant Antoni</div>
-        <div style="margin-bottom: 4px;"><span style="display:inline-block;width:16px;height:16px;background:green;border-radius:50%;margin-right:6px;vertical-align:middle;"></span> Ibiza Town</div>
-        <div style="margin-bottom: 4px;"><span style="display:inline-block;width:16px;height:16px;background:blue;border-radius:50%;margin-right:6px;vertical-align:middle;"></span> Disco Area</div>
-        <div><span style="display:inline-block;width:16px;height:16px;background:purple;border-radius:50%;margin-right:6px;vertical-align:middle;"></span> North / Hippie</div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>IBZ the Game: Survival Season</title>
+    <link rel="icon" type="image/png" href="assets/images/sprites/money.png">
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- 🔞 AGE GATE - Adult content disclaimer -->
+    <div id="age-gate">
+      <div class="age-content">
+        <h1>🔞 18+</h1>
+        <p>
+          <strong>IBZ the GAME</strong> contains adult themes, social satire,
+          and references to nightlife culture.
+        </p>
+        <p class="age-disclaimer">
+          Recommended for players 18 years or older.
+        </p>
+        <p class="age-credits">
+          Created by <strong>Goldmonkey</strong> · Goldmonkey Studio · All rights reserved.
+        </p>
+        <button id="enter-game" class="btn-primary">I understand, let me play</button>
       </div>
-    </section>
-  </main>
+    </div>
 
-  <style>
-    .marker {
-      position: absolute;
-      width: 22px;
-      height: 22px;
-      background: #1976d2;
-      border: 2px solid #fff;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 2;
-      box-shadow: 0 0 8px #0003;
-      cursor: pointer;
-    }
-    #marker-ibiza-centro {
-      background: red;
-      border: 2px solid #fff;
-      z-index: ;
-      width: 10px;
-      height: 10px;
-    }
-  </style>
-  <script src="js/game.js"></script>
-</body>
+    <main id="game">
+      <!-- Background Music (No Loop) -->
+      <audio id="bgMusic" src="Benediction.mp3"></audio>
+
+      <!-- START SCREEN -->
+      <section id="start-screen" class="screen active">
+        <div class="menu-content">
+          <h1>IBZ the GAME</h1>
+          <p>Explore the magical island!</p>
+          <div class="menu-buttons menu-buttons--vertical">
+            <button id="start-survival-btn" class="btn-primary">Start Season (Survival)</button>
+            <button id="info-btn" class="btn-secondary">About Island & Game</button>
+          </div>
+          <p class="menu-credits">© Goldmonkey · Goldmonkey Studio · All rights reserved.</p>
+        </div>
+      </section>
+
+      <!-- INFO SCREEN -->
+      <section id="info-screen" class="screen">
+        <div class="info-content">
+          <h2 class="info-title">Welcome to Ibiza! 🏝️</h2>
+          <p class="info-tagline">The White Isle — rhythm, desire, each zone a state of mind.</p>
+          <div class="info-text">
+            <p class="info-intro"><strong>Survival Season:</strong> Endless runner across 4 zones: <strong>Cala Saladeta</strong>, <strong>North / Hippie</strong>, <strong>Universo</strong>, <strong>Ibiza Town</strong>.</p>
+            <ul class="info-zones">
+              <li><span class="zone-icon">🏃</span> <strong>Run</strong> — jump on the beat. Lyrics sync and your character “sings”.</li>
+              <li><span class="zone-icon">🏖️</span> <strong>Cala Saladeta:</strong> Chica asks for a mojito; you deliver, gain € and life. Seagulls in the sky.</li>
+              <li><span class="zone-icon">🌿</span> <strong>North:</strong> Hippie gives flower (life, protection, or music effect).</li>
+              <li><span class="zone-icon">🎧</span> <strong>Universo:</strong> Gold Digger — unpredictable (takes money or gives bonus). Lights pulse with music.</li>
+              <li><span class="zone-icon">🚓</span> <strong>Ibiza Town:</strong> Police only here. Entry 60€. Avoid them.</li>
+            </ul>
+            <p class="info-credits">© Goldmonkey · Goldmonkey Studio · All rights reserved.</p>
+          </div>
+          <button id="back-from-info-btn" class="btn-primary btn-back-info">Back to Menu</button>
+
+          <div class="info-footer-18">
+            <span class="badge-18">🔞 18+</span>
+            <p>Satirical content & adult themes</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- GAME SCREEN (MAP) -->
+      <section id="game-screen" class="screen">
+        <div id="map-container">
+          <div id="map">
+            <img
+              src="assets/images/istockphoto-516624722-612x612.jpg"
+              alt="Map of Ibiza"
+              class="map-image"
+            />
+            <!-- Markers -->
+            <div class="marker marker--red" id="marker-ibiza-centro" title="Ibiza Center"></div>
+            <div class="marker marker--orange" id="marker-sant-antoni" title="Sant Antoni"></div>
+            <div class="marker marker--green" id="marker-ibiza-town" title="Ibiza Town"></div>
+            <div class="marker marker--blue" id="marker-disco-area" title="Universo"></div>
+            <div class="marker marker--purple" id="marker-hippie" title="North / Hippie"></div>
+
+            <!-- Player Element for Map -->
+            <div id="player"></div>
+
+            <!-- Legend -->
+            <div class="map-legend">
+              <div class="legend-item">
+                <span class="legend-dot legend-dot--red"></span>
+                Ibiza Center
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot legend-dot--orange"></span>
+                Sant Antoni
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot legend-dot--green"></span>
+                Ibiza Town
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot legend-dot--blue"></span>
+                Universo
+              </div>
+              <div class="legend-item">
+                <span class="legend-dot legend-dot--purple"></span>
+                North / Hippie
+              </div>
+            </div>
+          </div>
+          <button id="back-to-menu-btn" class="btn-back">Back to Menu</button>
+        </div>
+      </section>
+
+      <!-- FLAPPY SCREEN -->
+      <section id="flappy-screen" class="screen">
+        <div id="flappy-game-container">
+          <canvas id="flappy-canvas" width="320" height="480"></canvas>
+          <div class="music-controls">
+            <button type="button" id="mute-music-btn" class="btn-mute-music" title="Mute / Unmute music">🔇 Music</button>
+            <label class="volume-label" title="Volume">
+              <span class="volume-icon">🔊</span>
+              <input type="range" id="volume-slider" class="volume-slider" min="0" max="100" value="50" title="Volume" />
+            </label>
+          </div>
+          <!-- HUD Score (Live) -->
+          <div id="flappy-score-hud">PTS: 0</div>
+
+          <!-- Overlay (Start / Game Over) -->
+          <div id="flappy-overlay">
+             <div class="overlay-content">
+                <h2 id="flappy-msg">Tap to Start Season</h2>
+                <div id="flappy-stats">
+                    <h3 id="flappy-reason"></h3>
+                    <p id="flappy-zone-result">Zone: Sant Antoni</p>
+                    <div id="flappy-final-score">Points: 0</div>
+                </div>
+                <div class="game-buttons">
+                    <button id="flappy-restart-btn" class="btn-primary btn-hidden">Try Again</button>
+                    <button id="flappy-menu-btn" class="btn-secondary">Main Menu</button>
+                </div>
+             </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="js/flappy.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/main.js"></script>
+  </body>
 </html>

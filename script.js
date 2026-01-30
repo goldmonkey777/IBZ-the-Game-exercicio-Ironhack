@@ -1,4 +1,4 @@
-// Movimento do player e mini-game de Sant Antoni
+// Player movement and Sant Antoni mini-game
 
 const player = document.getElementById("player");
 let x = 48; // %
@@ -21,7 +21,7 @@ document.addEventListener("keydown", (e) => {
   player.style.top = `${y}%`;
 });
 
-// Mini-game de Sant Antoni
+// Sant Antoni mini-game
 const zones = document.querySelectorAll(".zone");
 
 zones.forEach((z) => {
@@ -30,21 +30,21 @@ zones.forEach((z) => {
     if (zone === "sunset") {
       startSantAntoniMiniGame();
     } else {
-      alert(`Entrou na zona: ${zone}`);
+      alert(`You entered the zone: ${zone}`);
     }
   });
 });
 
 function startSantAntoniMiniGame() {
-  alert("Mini-game: Fique em Sant Antoni por 5 segundos para ganhar pontos!");
+  alert("Mini-game: Stay in Sant Antoni for 5 seconds to earn points!");
   let seconds = 5;
   const interval = setInterval(() => {
     seconds--;
     if (seconds > 0) {
-      console.log(`Faltam ${seconds} segundos...");
+      console.log(`${seconds} seconds left...`);
     } else {
       clearInterval(interval);
-      alert("Parabéns! Você completou o mini-game de Sant Antoni!");
+      alert("Congratulations! You completed the Sant Antoni mini-game!");
     }
   }, 1000);
 }
